@@ -2,7 +2,7 @@
 <html lang="pt-BR" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>LUAN</title>
     
     <!-- PWA & Mobile Web App settings (Para instalar na tela inicial com ícone do Beat Proibido) -->
@@ -98,6 +98,30 @@
         }
         input::placeholder {
             color: #737373 !important;
+        }
+
+        /* --- CORREÇÕES DE iPhone (iOS Safari) --- */
+
+        /* A view do Vibes é flex-col, mas a classe .hidden do Tailwind sobrescreve o display.
+           Sem isto, ao remover .hidden o container volta para display:block e o flex-1 não vale. */
+        #tab-vibes-view:not(.hidden) {
+            display: flex;
+        }
+
+        /* Respeita o notch e a barra de gestos do iPhone (junto com viewport-fit=cover) */
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .vibes-safe-bottom {
+            bottom: calc(1.5rem + env(safe-area-inset-bottom));
+        }
+
+        /* iOS aplica um brilho/controle nativo próprio em <video>; normaliza a superfície */
+        .vibes-card video {
+            background-color: #000;
+        }
+        .vibes-card video::-webkit-media-controls {
+            display: none !important;
         }
     </style>
 </head>
@@ -226,7 +250,7 @@
         </main>
 
         <!-- TAB 4: VIBES (FULLSCREEN VIDEO FEED) -->
-        <div id="tab-vibes-view" class="fixed inset-x-0 top-0 bottom-16 max-w-md mx-auto bg-black hidden flex-col z-30 overflow-hidden border-x border-neutral-900 shadow-2xl">
+        <div id="tab-vibes-view" class="fixed inset-x-0 top-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] max-w-md mx-auto bg-black hidden flex-col z-30 overflow-hidden border-x border-neutral-900 shadow-2xl">
             <!-- Scroll Snapping Video Container (Gerado dinamicamente via JS) -->
             <div id="vibes-scroll-container" class="flex-1 overflow-y-scroll snap-y snap-mandatory no-scrollbar w-full h-full">
                 <!-- Gerado dinamicamente via JS para centralizar as cores e os dados das casas -->
@@ -234,7 +258,7 @@
         </div>
 
         <!-- BARRA DE NAVEGAÇÃO INFERIOR (Pulsada ao fundo - Correção de CSS do iOS/Android) -->
-        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto h-16 border-t border-theme-border bg-theme-bg/95 backdrop-blur-md flex justify-around items-center px-6 z-50 theme-transition">
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto min-h-[4rem] safe-bottom border-t border-theme-border bg-theme-bg/95 backdrop-blur-md flex justify-around items-center px-6 z-50 theme-transition">
             <button onclick="switchTab('discover')" id="nav-discover" class="nav-btn flex flex-col items-center justify-center space-y-1 text-white transition-all">
                 <i data-lucide="compass" class="w-4 h-4"></i>
                 <span class="text-[9px] uppercase font-bold tracking-widest font-heading">Casas</span>
@@ -764,7 +788,9 @@
         }
 
         // --- SISTEMA REELS/TIKTOK VIBES DE ALTA PERFORMANCE ---
-        let isVibesMuted = false;
+        // Começa mutado: iOS bloqueia autoplay com áudio, e o desbloqueio só é permitido
+        // dentro de um gesto do usuário (o toque no botão de som).
+        let isVibesMuted = true;
         let vibesObserver = null;
         let vibesEngineInitialized = false;
 
@@ -839,8 +865,14 @@
                     if (!video) return;
                     
                     if (entry.isIntersecting) {
+                        // Com preload="none" o iOS só busca a mídia quando pedimos explicitamente
+                        if (video.preload === 'none') {
+                            video.preload = 'auto';
+                            video.load();
+                        }
+
                         video.muted = isVibesMuted;
-                        
+
                         // Handle browser autoplay policy elegantly
                         const playPromise = video.play();
                         if (playPromise !== undefined) {
@@ -850,7 +882,7 @@
                                 video.play().catch(e => console.error("Fallback play failed:", e));
                             });
                         }
-                        
+
                         // Real-time progress bar sync
                         video.ontimeupdate = () => {
                             if (video.duration) {
@@ -860,7 +892,9 @@
                         };
                     } else {
                         video.pause();
-                        video.currentTime = 0; // Reset video to start
+                        // Só rebobina se já houver metadados; no iOS mexer em currentTime
+                        // antes disso dispara InvalidStateError.
+                        if (video.readyState > 0) video.currentTime = 0;
                         video.ontimeupdate = null;
                         if (bar) bar.style.width = '0%';
                     }
@@ -1644,13 +1678,17 @@
                 const btnTextColor = isColorLight ? 'text-black font-black' : 'text-white font-bold';
                 
                 card.innerHTML = `
-                    <video class="absolute inset-0 w-full h-full object-cover" loop playsinline muted src="logo-casas/${house.id}.mp4" onerror="if(this.src.indexOf('vimeo') === -1) { this.src='${house.videoUrl}'; this.load(); this.play().catch(e=>console.log(e)); }"></video>
+                    <video class="absolute inset-0 w-full h-full object-cover"
+                           loop muted playsinline webkit-playsinline disablepictureinpicture
+                           preload="${index === 0 ? 'auto' : 'none'}"
+                           poster="logo-casas/${house.id}-poster.jpg"
+                           src="logo-casas/${house.id}.mp4"></video>
                     
                     <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/20 pointer-events-none"></div>
                     
                     <button onclick="toggleVibesAudio(event)" class="absolute top-6 right-6 z-40 w-10 h-10 rounded-full bg-black/40 border border-white/10 flex items-center justify-center text-white backdrop-blur-md hover:bg-black/60 transition-all sound-toggle-btn">
-                        <i data-lucide="volume-x" class="w-4 h-4 mute-icon hidden"></i>
-                        <i data-lucide="volume-2" class="w-4 h-4 unmute-icon"></i>
+                        <i data-lucide="volume-x" class="w-4 h-4 mute-icon ${isVibesMuted ? '' : 'hidden'}"></i>
+                        <i data-lucide="volume-2" class="w-4 h-4 unmute-icon ${isVibesMuted ? 'hidden' : ''}"></i>
                     </button>
 
                     ${index === 0 ? `
@@ -1659,7 +1697,7 @@
                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-white"></i>
                     </div>` : ''}
                     
-                    <div class="absolute bottom-6 inset-x-0 px-6 z-40 space-y-4">
+                    <div class="absolute vibes-safe-bottom inset-x-0 px-6 z-40 space-y-4">
                         <div class="space-y-2">
                             <div class="flex items-center space-x-2">
                                 <span class="text-[9px] font-black font-heading px-2 py-0.5 rounded uppercase tracking-wider" style="background-color: ${house.theme.primary}; color: ${isColorLight ? '#000000' : '#ffffff'}">
