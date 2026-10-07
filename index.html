@@ -577,6 +577,15 @@
                                     <button id="seg-logado" role="tab" onclick="definirSessaoDemo(true)">Logado</button>
                                 </div>
                             </div>
+                            <div class="row flex-col items-stretch gap-2.5" style="padding-top: 12px; padding-bottom: 12px;">
+                                <span class="t-body">Horário</span>
+                                <div class="segmented" role="tablist" aria-label="Simular horário">
+                                    <button id="sim-agora" role="tab" onclick="escolherSimulacao('agora')">Agora</button>
+                                    <button id="sim-qua" role="tab" onclick="escolherSimulacao('qua')">Qua 20h</button>
+                                    <button id="sim-qui" role="tab" onclick="escolherSimulacao('qui')">Qui 20h</button>
+                                    <button id="sim-fds" role="tab" onclick="escolherSimulacao('fds')">Sáb 22h30</button>
+                                </div>
+                            </div>
                             <button onclick="closeMenu(); abrirOnboarding();" class="press row">
                                 <span class="t-body c-accent">Rever onboarding</span>
                             </button>
@@ -1058,8 +1067,36 @@
         const DIAS_CURTO = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
         const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
+        // Relógio da demonstração. Guardamos um deslocamento (e não uma data
+        // fixa) para o tempo continuar correndo: as contagens regressivas se
+        // movem na frente de quem assiste.
+        let clockOffsetMs = 0;
+        let simulacaoAtual = 'agora';
+
         function agora() {
-            return new Date();
+            return new Date(Date.now() + clockOffsetMs);
+        }
+
+        // Atalhos escolhidos pelos dados: quarta e quinta às 20h têm promoção
+        // valendo; sábado 22h30 tem mais casas abertas e o free acabando às 23h.
+        const SIMULACOES = {
+            agora: {},
+            qua: { dia: 3, hora: '20:00' },
+            qui: { dia: 4, hora: '20:00' },
+            fds: { dia: 6, hora: '22:30' }
+        };
+
+        function simularNoite(chave) {
+            const sim = SIMULACOES[chave] || SIMULACOES.agora;
+            simulacaoAtual = SIMULACOES[chave] ? chave : 'agora';
+            clockOffsetMs = 0;
+            if (sim.dia !== undefined) {
+                const real = new Date();
+                const alvo = new Date(real.getFullYear(), real.getMonth(), real.getDate(), ...sim.hora.split(':').map(Number));
+                alvo.setDate(alvo.getDate() + (sim.dia - alvo.getDay() + 7) % 7);
+                clockOffsetMs = alvo - real;
+            }
+            redesenharTudo();
         }
 
         function minutosDe(hhmm) {
@@ -1267,6 +1304,9 @@
             aplicarIdentidade('default');
             switchTab(ABA_INICIAL);
             updateReservasUI();
+            // ?sim=qua | qui | fds abre a demo já na noite certa
+            const sim = new URLSearchParams(location.search).get('sim');
+            if (SIMULACOES[sim]) simularNoite(sim);
 
             // O tempo corre na frente do cliente: as contagens regressivas
             // e o status "rolando agora" se atualizam sozinhos.
@@ -3384,6 +3424,7 @@
             document.getElementById('toggle-gerente').checked = isManagerMode;
             document.getElementById('seg-visitante').setAttribute('aria-selected', !logado);
             document.getElementById('seg-logado').setAttribute('aria-selected', logado);
+            Object.keys(SIMULACOES).forEach(k => document.getElementById(`sim-${k}`).setAttribute('aria-selected', k === simulacaoAtual));
 
             const linha = (acao, texto, extra) => `
                 <button onclick="${acao}" class="press row justify-between">
@@ -3442,7 +3483,8 @@
         function atualizarAvatar() {
             const btn = document.getElementById('avatar-btn');
             if (!btn) return;
-            btn.innerHTML = `<span class="w-full h-full rounded-full overflow-hidden flex items-center justify-center">${avatarConteudo()}</span>`;
+            btn.innerHTML = `<span class="w-full h-full rounded-full overflow-hidden flex items-center justify-center">${avatarConteudo()}</span>` +
+                (simulacaoAtual !== 'agora' ? `<span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-black" style="background: var(--accent);" title="Horário simulado"></span>` : '');
         }
 
         /* ===================================================================
@@ -3647,6 +3689,13 @@
         }
 
         // Atalho da demonstração: troca de papel sem passar pelo código.
+        function escolherSimulacao(chave) {
+            simularNoite(chave);
+            renderMenu();
+            const sim = SIMULACOES[chave];
+            showSuccessToast(sim.dia === undefined ? 'Horário real' : `${DIAS_TITULO[sim.dia]}, ${sim.hora.replace(':00', 'h').replace(':', 'h')}`);
+        }
+
         function definirSessaoDemo(logado) {
             if (logado && !sessao.nome) Object.assign(sessao, PERFIL_DEMO);
             sessao.logado = logado;
@@ -3669,7 +3718,7 @@
         function deveMostrarOnboarding() {
             const p = new URLSearchParams(location.search);
             if (p.get('onboarding') === '1') return true;
-            if (['casa', 'aba', 'hora'].some(k => p.has(k))) return false;
+            if (['casa', 'aba', 'sim'].some(k => p.has(k))) return false;
             try { return !localStorage.getItem(CHAVE_ONBOARDING); } catch (e) { return false; }
         }
 
