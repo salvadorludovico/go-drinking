@@ -217,3 +217,26 @@ Ideia de um sócio: vaga → termos → contrato assinado → tributos, acopland
 - Demo cobre só MEI; RPA e intermitente ficam para a fase 2, conforme o documento.
 
 *Atualizado: 17/09/2026.*
+
+---
+
+# Jornadas de usuário do MVP (set/2026)
+
+Objetivo desta fase, definido em 17/09/2026: **fazer o Luan querer rodar o app nas seis casas dele**. Monetização e modelo de receita ficam explicitamente para depois disso.
+
+- [x] **Mapa de jornadas inicial**: `base/08-jornadas.md` — seis jornadas (Luan, visitante, reserva, porta, Vibes, publicação), cada passo marcado como tela existente ou lacuna, com os pontos de decisão do `04` no próprio diagrama
+- [x] Tabela de lacunas protótipo → MVP por fatia (F1 a F7)
+- [ ] **Refinamento com melhores práticas de engenharia e produto**:
+  - [ ] Adicionar caminhos de exceção e falhas da noite para cada jornada (rede instável, OTP atrasado, concorrência, cancelamento, estorno de lote)
+  - [ ] Formalizar atores, contexto situacional (barulho, luz baixa, pressa) e momentos da verdade
+  - [ ] Definir métrica objetiva de sucesso e telemetria para cada uma das 6 jornadas no piloto
+  - [ ] Estruturar matriz executiva de fechamento das 7 decisões bloqueantes (#1, #2, #3, #5, #6, #7, #10) com opções e recomendação técnica
+- [ ] **Reunião de decisões (Etapa 1)** — usar o `08` como pauta executiva com o Luan e os sócios
+- [ ] Depois da reunião: virar as lacunas em telas no protótipo (cadastro, lista de espera, cancelamento, busca na porta)
+- [ ] Definir com o Luan quem manda a programação da semana e em que dia (risco nº 1 do piloto)
+
+## Revisão
+- O protótipo parece mais avançado do que o projeto está: descoberta pronta, reserva meio pronta, e tudo que falta é invisível (conta, persistência, comunicação, infraestrutura). Isso precisa ser dito aos sócios antes que concluam sozinhos que falta pouco.
+- Vibes volta para o piloto, contra o corte do `05`, mas só no modelo de curadoria própria ou vídeo enviado pela casa — upload aberto continua fora.
+
+*Atualizado: 18/09/2026.*

@@ -99,7 +99,8 @@ show-rate).
 | Item | Por quê | Quando |
 |---|---|---|
 | Pagamento no app (cartão/Pix) | Decisão da reunião: risco e complexidade operacional | Fase 3, com adquirente definida |
-| Integração Zig | Inviável hoje, sem contrato nem API definida `[DECISÃO #12]` | Reavaliar após piloto |
+| Integração Zig (direta) | Inviável hoje, sem contrato nem API definida `[DECISÃO #12]` | Reavaliar após piloto |
+| Integração com CRM acoplado à Zig | Via alternativa: não depende da API da Zig, mas segue sendo terceiro `[DECISÃO #13]` | Fase 2, se a parceria se confirmar |
 | Fidelidade paga (Ouro R$15) | Depende de pagamento | Fase 3 |
 | Vibes em produção (upload, CDN, moderação) | Maior custo de infra, não move a métrica do piloto | Fase 2 |
 | Painel self-service para gerentes | Nós publicamos no piloto | Fase 2, ao passar de 2 casas |

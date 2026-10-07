@@ -23,7 +23,7 @@ quem promete data é o CTO.
 
 ## Etapa 1 — Fechar as decisões bloqueantes (1 reunião, ~2h)
 
-Não são as 60 perguntas do doc `02`. São **12** que mudam arquitetura ou prazo.
+Não são as 60 perguntas do doc `02`. São **13** que mudam arquitetura ou prazo.
 As demais podem ser decididas durante o desenvolvimento sem retrabalho.
 
 
@@ -40,6 +40,8 @@ As demais podem ser decididas durante o desenvolvimento sem retrabalho.
 | 9  | Vernissage/Sympla: integramos ou só linkamos?                  | Integração de terceiro é o item de maior variância                               |
 | 10 | Vibes (vídeos) fica no MVP?                                    | É o maior custo de infra e de curadoria de conteúdo                                |
 | 11 | Push notification no dia 1?                                     | PWA no iOS exige "adicionar à tela de início" — impacta a promessa de remarketing |
+| 12 | Integramos com a Zig (cashless/PDV) no MVP?                     | Sem contrato nem API definida, a variância é alta — hoje está fora do escopo      |
+| 13 | O Customer Relationship Management (CRM) de Brasília acoplado à Zig é parceiro ou concorrente? | Define se abrimos o funil de reserva para terceiro e quem é dono da base do cliente |
 
 **Formato de saída:** uma tabela `Decisão | Escolha | Data | Quem decidiu`.
 Decisão sem dono e sem data volta a ser discussão em duas semanas.
@@ -105,7 +107,7 @@ plugar as outras 6 casas. Defina o número-meta **antes** de subir, com o Luan.
 
 O que eles querem ouvir não é a data. É que existe um método:
 
-1. "Fechamos 12 decisões — aqui estão, assinadas."
+1. "Fechamos 13 decisões — aqui estão, assinadas."
 2. "Cada decisão virou N comportamentos testáveis."
 3. "Cada comportamento tem estimativa de 3 pontos."
 4. "A soma, com a produtividade real de 1 dev, dá esta faixa."

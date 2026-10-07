@@ -311,6 +311,40 @@
 
 ---
 
+### 🔌 SOBRE O CRM ACOPLADO À ZIG (`[DECISÃO #13]`)
+
+> **Origem:** mensagem do Luan em 17/09/2026 — conheceu um grupo de Brasília com um
+> Customer Relationship Management (CRM) que acopla na Zig e puxa todos os leads.
+> Ele ficou de passar a visão completa depois.
+
+**O que é, em uma linha:** a Zig é o cashless/Ponto de Venda (PDV) das casas; um CRM
+plugado nela lê a base de **consumo** — quem entrou, o que consumiu, quanto gastou.
+
+**Por que importa para nós:** a Zig só enxerga quem **já entrou e gastou**. Nós ficamos
+um passo antes — intenção: quem viu o evento, quem reservou, quem reservou e não
+apareceu. É dado que não existe dentro da Zig. A chave de junção entre os dois lados é
+o CPF/telefone, que o cadastro do MVP já coleta.
+
+- Funil completo só existe juntando os dois: `viu → reservou → chegou → gastou R$X`.
+- Consequência de posicionamento: **não vendemos "damos dados para a casa"** — se ela já
+  tem esse CRM, esse pitch morre. Vendemos o lado da demanda (descoberta + reserva).
+
+**Perguntas a fazer ao Luan quando ele passar a visão:**
+
+- [ ] Eles vendem para a **casa** ou para a **marca de festa**? (define quem é o cliente comum)
+- [ ] Já atendem alguma das nossas seis casas? (revela se é parceiro ou concorrente)
+- [ ] O CRM deles **recebe** dado de fora ou só **puxa** da Zig? (se só puxa, não há ponte)
+- [ ] Quem fica dono da base do cliente final numa integração — eles, a casa, ou nós?
+- [ ] Eles têm ou pretendem ter reserva/descoberta no produto? (sobreposição direta)
+
+**Riscos registrados:**
+
+- CRM de casa noturna está a um passo de virar app de reserva — pode ser concorrente.
+- Dependência de terceiro, mesma variância que jogou a Sympla para a Fase 2 `[DECISÃO #9]`.
+- Não reabre a `[DECISÃO #12]`: continuamos sem precisar da API da Zig. **Fora do piloto.**
+
+---
+
 ## 📝 Checklist Pré-Conversa com Luan
 
 - [ ] Imprimir este documento ou compartilhar digital
@@ -321,9 +355,10 @@
 - [ ] Validar se as 6 casas estão 100% interessadas ou só algumas
 - [ ] Deixar claro: MVP é rápido, depois evolui
 - [ ] Discutir o fluxo de promoção de artistas/atrações (Beat Proibido), marcas de festas itinerantes (Cultura Subcult) no app e a integração dos créditos do co-criador (Luan).
+- [ ] Levantar as 5 perguntas do CRM acoplado à Zig `[DECISÃO #13]` quando o Luan passar a visão completa.
 
 ---
 
 **Data de criação:** 15/07/2026  
-**Última atualização:** Pré-conversa com Luan  
+**Última atualização:** 17/09/2026 — inclusão da `[DECISÃO #13]` (CRM acoplado à Zig)  
 **Status:** Aguardando respostas
