@@ -541,10 +541,13 @@
                                 <span class="t-body">Modo gerente</span>
                                 <input type="checkbox" role="switch" id="toggle-gerente" onchange="toggleManagerMode()" class="switch">
                             </label>
-                            <label class="row justify-between">
+                            <button type="button" onclick="escolherIdentidade()" class="press row justify-between">
                                 <span class="t-body shrink-0">Identidade visual</span>
-                                <select id="menu-identidade" onchange="aplicarIdentidade(this.value)" class="bare t-body c-2 text-right flex-1 cursor-pointer" style="text-align-last: right;"></select>
-                            </label>
+                                <span class="flex items-center gap-1 min-w-0 c-2">
+                                    <span id="menu-identidade" class="t-body truncate"></span>
+                                    <i data-lucide="chevrons-up-down" class="w-4 h-4 shrink-0"></i>
+                                </span>
+                            </button>
                             <label class="row justify-between">
                                 <span class="t-body shrink-0">Dia simulado</span>
                                 <select id="menu-dia" class="bare t-body c-2 text-right flex-1 cursor-pointer" style="text-align-last: right;"></select>
@@ -563,6 +566,15 @@
                         <p id="menu-relogio-status" class="t-foot c-3 px-4"></p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- CONFIRMAR / ESCOLHER: substituem confirm() e <select> do sistema -->
+        <div id="escolha-sheet" class="fixed inset-0 z-[65] hidden" role="dialog" aria-modal="true" aria-labelledby="escolha-titulo">
+            <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="fecharEscolha(null)"></div>
+            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto px-2 pb-safe space-y-2">
+                <div id="escolha-corpo" class="bg-[#1c1c1e] rounded-[14px] overflow-hidden max-h-[70vh] overflow-y-auto no-scrollbar"></div>
+                <button type="button" onclick="fecharEscolha(null)" class="press w-full h-14 rounded-[14px] bg-[#1c1c1e] t-headline c-accent">Cancelar</button>
             </div>
         </div>
 
@@ -1231,6 +1243,7 @@
             window.addEventListener('scroll', atualizarBarraCompacta, { passive: true });
             document.addEventListener('keydown', e => {
                 if (e.key !== 'Escape') return;
+                if (fecharEscolha(null)) return; // fecha só o painel de cima
                 closeReservationModal();
                 closeMenu();
                 closeVagaModal();
@@ -3189,16 +3202,65 @@
             lucide.createIcons();
         }
 
-        function cancelReserva(id) {
-            if (confirm("Retirar seu nome da lista?")) {
-                const rIndex = reservations.findIndex(r => r.id === id);
-                if (rIndex !== -1) {
-                    reservations[rIndex].status = 'cancelada';
-                    try { localStorage.setItem('gyn_reservas', JSON.stringify(reservations)); } catch (e) { /* demo */ }
-                    updateReservasUI();
-                    showSuccessToast("Nome retirado da lista");
-                }
+        async function cancelReserva(id) {
+            const ok = await confirmar({ titulo: 'Retirar seu nome da lista?', acao: 'Retirar nome', perigo: true });
+            if (!ok) return;
+            const rIndex = reservations.findIndex(r => r.id === id);
+            if (rIndex !== -1) {
+                reservations[rIndex].status = 'cancelada';
+                try { localStorage.setItem('gyn_reservas', JSON.stringify(reservations)); } catch (e) { /* demo */ }
+                updateReservasUI();
+                showSuccessToast("Nome retirado da lista");
             }
+        }
+
+        /* ===================================================================
+           CONFIRMAR E ESCOLHER
+           Nada de confirm() nem <select> do sistema: os dois sobem neste
+           painel, no visual do app. confirmar() resolve true/false;
+           escolher() resolve o valor escolhido ou null.
+           =================================================================== */
+
+        let resolverEscolha = null;
+        const SEP_TITULO = 'style="border-bottom: 0.5px solid var(--sep);"';
+
+        function abrirEscolha(html) {
+            if (resolverEscolha) resolverEscolha(null);
+            document.getElementById('escolha-corpo').innerHTML = html;
+            document.getElementById('escolha-sheet').classList.remove('hidden');
+            lucide.createIcons();
+            return new Promise(r => { resolverEscolha = r; });
+        }
+
+        function fecharEscolha(valor) {
+            const sheet = document.getElementById('escolha-sheet');
+            if (sheet.classList.contains('hidden')) return false;
+            sheet.classList.add('hidden');
+            const r = resolverEscolha;
+            resolverEscolha = null;
+            if (r) r(valor);
+            return true;
+        }
+
+        function confirmar({ titulo, mensagem = '', acao = 'Confirmar', perigo = false }) {
+            return abrirEscolha(`
+                <div class="px-4 pt-4 pb-3 text-center" ${SEP_TITULO}>
+                    <p id="escolha-titulo" class="t-foot c-2 font-semibold">${titulo}</p>
+                    ${mensagem ? `<p class="t-foot c-3 pt-1">${mensagem}</p>` : ''}
+                </div>
+                <button type="button" onclick="fecharEscolha(true)" class="press w-full h-14 t-body ${perigo ? 'c-danger' : 'c-accent'}">${acao}</button>`)
+                .then(v => v === true);
+        }
+
+        function escolher({ titulo, opcoes, atual }) {
+            return abrirEscolha(`
+                <p id="escolha-titulo" class="t-foot c-2 font-semibold text-center px-4 pt-4 pb-3" ${SEP_TITULO}>${titulo}</p>
+                ${opcoes.map((o, i) => `
+                <button type="button" onclick="fecharEscolha(${i})" ${o.valor === atual ? 'aria-current="true"' : ''} class="press row justify-between">
+                    <span class="t-body">${o.rotulo}</span>
+                    ${o.valor === atual ? '<i data-lucide="check" class="w-5 h-5 c-accent shrink-0"></i>' : ''}
+                </button>`).join('')}`)
+                .then(i => i === null ? null : opcoes[i].valor);
         }
 
         /* ===================================================================
@@ -3221,10 +3283,8 @@
             document.getElementById('menu-avatar').innerHTML = avatarConteudo();
             document.getElementById('toggle-gerente').checked = isManagerMode;
 
-            const ident = document.getElementById('menu-identidade');
-            ident.innerHTML = `<option value="default">Geral</option>` +
-                housesData.map(h => `<option value="${h.id}">${nomeCasa(h)}</option>`).join('');
-            ident.value = identidadeId;
+            const casa = housesData.find(h => h.id === identidadeId);
+            document.getElementById('menu-identidade').innerText = casa ? nomeCasa(casa) : 'Geral';
 
             const dia = document.getElementById('menu-dia');
             dia.innerHTML = DIAS_TITULO.map((d, i) => `<option value="${i}">${d}</option>`).join('');
@@ -3249,6 +3309,14 @@
         function voltarTempoReal() {
             limparSimulacao();
             showSuccessToast('Horário real');
+            renderMenu();
+        }
+
+        async function escolherIdentidade() {
+            const opcoes = [{ valor: 'default', rotulo: 'Geral' }, ...housesData.map(h => ({ valor: h.id, rotulo: nomeCasa(h) }))];
+            const valor = await escolher({ titulo: 'Identidade visual', opcoes, atual: identidadeId });
+            if (valor === null) return;
+            aplicarIdentidade(valor);
             renderMenu();
         }
 
