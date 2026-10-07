@@ -151,6 +151,8 @@
 
         .rail { display: flex; gap: 12px; overflow-x: auto; padding: 0 16px; scroll-snap-type: x mandatory; scroll-padding: 0 16px; }
         .rail > * { scroll-snap-align: start; }
+        /* Atalho para uma casa aberta, no cabeçalho do Hoje */
+        .chip-casa { height: 32px; padding: 0 12px 0 4px; border-radius: 16px; background: var(--fill-1); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0; }
 
         .search-field { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 12px; background: var(--fill-1); color: var(--label-3); }
 
@@ -314,6 +316,7 @@
                         <h1 class="t-large">Hoje</h1>
                         <p id="hoje-resumo" class="t-sub c-2 flex items-center gap-2"></p>
                     </div>
+                    <div id="hoje-chips" class="rail -mx-4 gap-2" style="display: none"></div>
                     <label class="search-field">
                         <i data-lucide="search" class="w-[17px] h-[17px] shrink-0"></i>
                         <input type="search" id="search-input" oninput="searchFilter()" placeholder="Casa, festa ou estilo" aria-label="Buscar casas e festas" autocomplete="off" class="bare flex-1 t-body text-white">
@@ -1496,15 +1499,29 @@
             return lista.slice().sort((a, b) => pontuar(b) - pontuar(a))[0] || null;
         }
 
-        function atualizarCabecalhoHoje(ref, abertas, abremHoje) {
+        function atualizarCabecalhoHoje(ref, agoraL, abremHoje) {
             document.getElementById('hoje-data').innerText =
                 `${DIAS_TITULO[ref.getDay()]}, ${ref.getDate()} de ${MESES_LONGO[ref.getMonth()]}`;
+
+            // Uma casa pode ter mais de uma noite rolando; o atalho leva à primeira
+            const porCasa = new Map();
+            agoraL.forEach(x => { if (!porCasa.has(x.house.id)) porCasa.set(x.house.id, x); });
+            const abertas = porCasa.size;
 
             let resumo;
             if (abertas > 0) resumo = `<span class="dot pulse"></span><span>${abertas} ${abertas === 1 ? 'casa aberta' : 'casas abertas'} agora</span>`;
             else if (abremHoje > 0) resumo = `<span class="dot idle"></span><span>${abremHoje} ${abremHoje === 1 ? 'casa abre' : 'casas abrem'} mais tarde</span>`;
             else resumo = `<span class="dot idle"></span><span>Nenhuma casa aberta agora</span>`;
             document.getElementById('hoje-resumo').innerHTML = resumo;
+
+            const chips = document.getElementById('hoje-chips');
+            const scroll = chips.scrollLeft;
+            chips.style.display = abertas ? '' : 'none';
+            chips.innerHTML = [...porCasa.values()].map(({ house, st }) => `
+                <button onclick="openHouseDetail('${house.id}', '${st.prog.id}')" class="press chip-casa">
+                    ${logoHtml(house, 'w-6 h-6')}${nomeCasa(house)}
+                </button>`).join('');
+            chips.scrollLeft = scroll;
         }
 
         function casasUnicas(lista) {
@@ -1519,7 +1536,7 @@
             const agoraL = todas.filter(x => x.st.estado === 'agora');
             const hojeL = todas.filter(x => x.st.estado === 'hoje');
 
-            atualizarCabecalhoHoje(ref, casasUnicas(agoraL), casasUnicas(hojeL));
+            atualizarCabecalhoHoje(ref, agoraL, casasUnicas(hojeL));
 
             const busca = document.getElementById('search-input').value.trim();
             if (busca) {
