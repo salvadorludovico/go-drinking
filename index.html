@@ -208,6 +208,21 @@
         .eu-ponto { width: 18px; height: 18px; border-radius: 9px; background: #0a84ff; border: 3px solid #ffffff; box-shadow: 0 0 0 8px rgba(10,132,255,0.25); }
         .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 20px); }
 
+        /* Onboarding: trilho horizontal com uma tela por vez */
+        .ob-trilho { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; flex: 1; min-height: 0; }
+        .ob-trilho > section { flex: 0 0 100%; min-width: 0; scroll-snap-align: center; scroll-snap-stop: always; display: flex; flex-direction: column; padding: 0 24px; min-height: 0; }
+        .ob-pontos { display: flex; gap: 8px; justify-content: center; }
+        .ob-pontos span { width: 7px; height: 7px; border-radius: 4px; background: var(--fill-3); transition: width 0.25s ease, background 0.25s ease; }
+        .ob-pontos span.on { width: 20px; background: #ffffff; }
+        .ob-qr svg { width: clamp(88px, 18vh, 150px); height: auto; }
+
+        /* Código de verificação: um campo real por baixo de quatro caixas */
+        .otp { position: relative; display: grid; grid-template-columns: repeat(4, 56px); gap: 12px; justify-content: center; }
+        .otp-caixa { height: 64px; border-radius: 14px; background: var(--fill-2); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 600; border: 1.5px solid transparent; transition: border-color 0.15s ease; }
+        .otp-caixa.atual { border-color: #ffffff; }
+        .otp-caixa.erro { border-color: var(--danger); }
+        .otp input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; font-size: 16px; caret-color: transparent; }
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation: none !important; transition: none !important; }
         }
@@ -479,11 +494,11 @@
                     <div class="space-y-2">
                         <p class="t-cap c-2 px-4">Quem vai</p>
                         <div class="group-list on-fill">
-                            <label class="row">
+                            <label id="res-linha-nome" class="row">
                                 <span class="t-body shrink-0">Nome na lista</span>
                                 <input type="text" id="res-name" required autocomplete="name" placeholder="Seu nome" class="bare t-body c-2 flex-1 text-right">
                             </label>
-                            <label class="row">
+                            <label id="res-linha-tel" class="row">
                                 <span class="t-body shrink-0">WhatsApp</span>
                                 <input type="tel" id="res-phone" required autocomplete="tel" placeholder="(62) 99999-9999" class="bare t-body c-2 flex-1 text-right">
                             </label>
@@ -504,6 +519,9 @@
 
                     <div class="space-y-2.5 pt-2">
                         <button type="submit" id="res-submit" class="press btn-primary w-full" style="height: 54px; border-radius: 27px;">Confirmar</button>
+                        <p id="res-login-nota" class="t-foot c-2 text-center px-4 flex items-center justify-center gap-1.5 hidden">
+                            <i data-lucide="smartphone" class="w-3.5 h-3.5 shrink-0"></i><span>No próximo passo você entra com seu celular, sem senha.</span>
+                        </p>
                         <p id="res-nota" class="t-foot c-3 text-center px-4"></p>
                     </div>
                 </form>
@@ -535,27 +553,30 @@
                 <div class="flex flex-col items-center gap-1.5 pb-6">
                     <div id="menu-avatar" class="w-[72px] h-[72px] rounded-full bg-[#3a3a3c] flex items-center justify-center text-[30px] font-semibold overflow-hidden"></div>
                     <span id="menu-nome" class="t-title2 pt-1"></span>
-                    <span class="t-sub c-2">Cliente desde set/2026</span>
+                    <span id="menu-sub" class="t-sub c-2"></span>
                 </div>
 
                 <div class="space-y-6">
                     <div class="space-y-2">
                         <p class="t-cap c-2 px-4">Conta</p>
-                        <div class="group-list on-fill">
-                            <button onclick="closeMenu(); switchTab('ingressos');" class="press row justify-between">
-                                <span class="t-body">Meus ingressos</span>
-                                <i data-lucide="chevron-right" class="w-4 h-4 text-[#636366]"></i>
-                            </button>
-                            <button onclick="closeMenu(); switchTab('freelas');" class="press row justify-between">
-                                <span class="t-body">Trabalhe na noite</span>
-                                <i data-lucide="chevron-right" class="w-4 h-4 text-[#636366]"></i>
-                            </button>
+                        <div id="menu-conta" class="group-list on-fill">
+                            <!-- Gerado via renderMenu(): muda entre visitante e logado -->
                         </div>
                     </div>
 
                     <div class="space-y-2">
                         <p class="t-cap c-2 px-4">Demonstração</p>
                         <div class="group-list on-fill">
+                            <div class="row justify-between">
+                                <span class="t-body shrink-0">Sessão</span>
+                                <div class="segmented w-[190px]" role="tablist" aria-label="Simular sessão">
+                                    <button id="seg-visitante" role="tab" onclick="definirSessaoDemo(false)">Visitante</button>
+                                    <button id="seg-logado" role="tab" onclick="definirSessaoDemo(true)">Logado</button>
+                                </div>
+                            </div>
+                            <button onclick="closeMenu(); abrirOnboarding();" class="press row">
+                                <span class="t-body c-accent">Rever onboarding</span>
+                            </button>
                             <label class="row justify-between cursor-pointer">
                                 <span class="t-body">Modo gerente</span>
                                 <input type="checkbox" role="switch" id="toggle-gerente" onchange="toggleManagerMode()" class="switch">
@@ -579,6 +600,41 @@
             <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto px-2 pb-safe space-y-2">
                 <div id="escolha-corpo" class="bg-[#1c1c1e] rounded-[14px] overflow-hidden max-h-[70vh] overflow-y-auto no-scrollbar"></div>
                 <button type="button" onclick="fecharEscolha(null)" class="press w-full h-14 rounded-[14px] bg-[#1c1c1e] t-headline c-accent">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- ENTRAR COM CELULAR: sobe por cima da reserva e devolve a pessoa para ela -->
+        <div id="login-sheet" class="fixed inset-0 z-[65] hidden" role="dialog" aria-modal="true" aria-labelledby="login-titulo">
+            <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="fecharLogin()"></div>
+            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[#1c1c1e] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
+                <div class="grabber"></div>
+                <div class="flex items-center justify-between pt-2 h-11">
+                    <button id="login-voltar" onclick="voltarLogin()" aria-label="Voltar" class="press w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center c-2 invisible">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="fecharLogin()" aria-label="Fechar" class="press w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center c-2">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div id="login-conteudo" class="pt-2">
+                    <!-- Gerado via renderLogin(): telefone → código → nome -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ONBOARDING: primeira visita. "Pular" sempre à mão. -->
+        <div id="onboarding" class="fixed inset-0 z-[80] bg-black hidden" role="dialog" aria-modal="true" aria-label="Boas-vindas">
+            <div class="max-w-md mx-auto h-full flex flex-col">
+                <div class="pt-safe px-4 flex justify-end">
+                    <button onclick="concluirOnboarding()" class="press t-headline c-2 h-11 px-2">Pular</button>
+                </div>
+                <div id="ob-trilho" class="ob-trilho no-scrollbar" onscroll="aoRolarOnboarding()">
+                    <!-- Gerado via abrirOnboarding(), com dados reais da noite -->
+                </div>
+                <div class="px-6 pt-4 pb-safe space-y-5">
+                    <div id="ob-pontos" class="ob-pontos" aria-hidden="true"></div>
+                    <div id="ob-acoes" class="flex flex-col items-stretch gap-2"></div>
+                </div>
             </div>
         </div>
 
@@ -1191,9 +1247,17 @@
         let reservations = [];
         try { reservations = JSON.parse(localStorage.getItem('gyn_reservas')) || []; } catch (e) { reservations = []; }
 
-        // Perfil da demo. O nome e o WhatsApp usados na última lista ficam salvos.
-        const USUARIO = { nome: 'Salvador', telefone: '(62) 99000-0000' };
-        try { Object.assign(USUARIO, JSON.parse(localStorage.getItem('gyn_perfil')) || {}); } catch (e) { /* segue com o padrão */ }
+        // Sessão: visitante vê tudo e não garante nada; logado entra na lista.
+        // Ao sair, nome e telefone ficam guardados: quem volta com o mesmo número
+        // não precisa digitar o nome de novo.
+        const CHAVE_SESSAO = 'gyn_sessao';
+        const PERFIL_DEMO = { nome: 'Salvador', telefone: '(62) 99000-0000' };
+        const sessao = { logado: false, nome: '', telefone: '' };
+        try { Object.assign(sessao, JSON.parse(localStorage.getItem(CHAVE_SESSAO)) || {}); } catch (e) { /* começa como visitante */ }
+
+        function salvarSessao() {
+            try { localStorage.setItem(CHAVE_SESSAO, JSON.stringify(sessao)); } catch (e) { /* navegação privada: vale até fechar */ }
+        }
 
         // Inicializar
         window.addEventListener('DOMContentLoaded', () => {
@@ -1212,12 +1276,15 @@
             document.addEventListener('keydown', e => {
                 if (e.key !== 'Escape') return;
                 if (fecharEscolha(null)) return; // fecha só o painel de cima
+                // O login fica por cima da reserva: o Escape fecha só ele.
+                if (!document.getElementById('login-sheet').classList.contains('hidden')) return fecharLogin();
                 closeReservationModal();
                 closeMenu();
                 closeVagaModal();
             });
 
             abrirDestinoDaUrl();          // ?casa=moi ou ?aba=ingressos — link direto
+            if (deveMostrarOnboarding()) abrirOnboarding();   // ?onboarding=1 força
         });
 
         // Link direto para uma casa ou aba. Serve para o "vem pro Môi hoje"
@@ -2894,8 +2961,7 @@
             logo.onerror = () => { logo.style.visibility = 'hidden'; };
             logo.src = `logo-casas/${house.id}.jpg`;
 
-            document.getElementById('res-name').value = USUARIO.nome;
-            document.getElementById('res-phone').value = USUARIO.telefone;
+            prepararQuemVai();
 
             // O cliente confirma sabendo quanto vai pagar e o que ainda vai pegar.
             const caixa = document.getElementById('modal-event-rules');
@@ -2947,8 +3013,33 @@
             document.getElementById('reservation-modal').classList.add('hidden');
         }
 
+        // Visitante escolhe a noite e as pessoas sem conta. Nome e WhatsApp
+        // só aparecem depois do login, já preenchidos.
+        function prepararQuemVai() {
+            const logado = sessao.logado;
+            ['res-linha-nome', 'res-linha-tel'].forEach(id => document.getElementById(id).classList.toggle('hidden', !logado));
+            document.getElementById('res-name').required = logado;
+            document.getElementById('res-phone').required = logado;
+            document.getElementById('res-name').value = logado ? sessao.nome : '';
+            document.getElementById('res-phone').value = logado ? sessao.telefone : '';
+            document.getElementById('res-login-nota').classList.toggle('hidden', logado);
+        }
+
         function handleReservationSubmit(event) {
             event.preventDefault();
+
+            // O login acontece por cima da reserva, que continua aberta embaixo
+            // com a mesma noite e as mesmas pessoas. Na volta, falta um toque.
+            if (!sessao.logado) {
+                abrirLogin({
+                    motivo: 'reserva',
+                    aoConcluir: () => {
+                        prepararQuemVai();
+                        document.getElementById('res-submit').focus();
+                    }
+                });
+                return;
+            }
 
             const eventId = document.getElementById('modal-event-id').value;
             const houseId = document.getElementById('modal-house-id').value;
@@ -2976,11 +3067,11 @@
             };
 
             reservations.unshift(newRes);
-            USUARIO.nome = name;
-            USUARIO.telefone = phone;
+            sessao.nome = name;
+            sessao.telefone = phone;
+            salvarSessao();
             try {
                 localStorage.setItem('gyn_reservas', JSON.stringify(reservations));
-                localStorage.setItem('gyn_perfil', JSON.stringify(USUARIO));
             } catch (e) { /* demo segue sem persistir */ }
 
             closeReservationModal();
@@ -3143,10 +3234,23 @@
             const passados = reservations.filter(r => reservaPassou(r, ref))
                 .sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate));
 
-            document.getElementById('reservas-badge').classList.toggle('hidden', proximos.length === 0);
+            document.getElementById('reservas-badge').classList.toggle('hidden', !sessao.logado || proximos.length === 0);
 
             const lista = document.getElementById('ingressos-lista');
             if (!lista) return;
+
+            // Os passes são da conta: visitante não vê os de quem saiu.
+            if (!sessao.logado) {
+                lista.innerHTML = `
+                    <div class="pt-10 pb-4 flex flex-col items-center text-center gap-2">
+                        <span class="w-14 h-14 rounded-full bg-[#1c1c1e] flex items-center justify-center mb-2"><i data-lucide="ticket" class="w-6 h-6 c-2"></i></span>
+                        <p class="t-headline">Seus ingressos ficam aqui</p>
+                        <p class="t-sub c-2 max-w-[280px]">Entre com seu celular para ver as listas e mesas que você garantiu, com o QR da portaria.</p>
+                        <button onclick="abrirLogin()" class="press btn-primary sm mt-3">Entrar com celular</button>
+                    </div>`;
+                lucide.createIcons();
+                return;
+            }
             document.getElementById('seg-proximos').setAttribute('aria-selected', ingressosFiltro === 'proximos');
             document.getElementById('seg-passados').setAttribute('aria-selected', ingressosFiltro === 'passados');
 
@@ -3255,9 +3359,26 @@
         }
 
         function renderMenu() {
-            document.getElementById('menu-nome').innerText = USUARIO.nome;
+            const logado = sessao.logado;
+            document.getElementById('menu-nome').innerText = logado ? sessao.nome : 'Visitante';
+            document.getElementById('menu-sub').innerText = logado ? sessao.telefone : 'Você vê tudo. Para garantir entrada, entre com o celular.';
+            document.getElementById('menu-sub').classList.toggle('text-center', !logado);
             document.getElementById('menu-avatar').innerHTML = avatarConteudo();
             document.getElementById('toggle-gerente').checked = isManagerMode;
+            document.getElementById('seg-visitante').setAttribute('aria-selected', !logado);
+            document.getElementById('seg-logado').setAttribute('aria-selected', logado);
+
+            const linha = (acao, texto, extra) => `
+                <button onclick="${acao}" class="press row justify-between">
+                    <span class="t-body ${extra || ''}">${texto}</span>
+                    ${extra ? '' : '<i data-lucide="chevron-right" class="w-4 h-4 text-[#636366]"></i>'}
+                </button>`;
+            document.getElementById('menu-conta').innerHTML = logado
+                ? linha("closeMenu(); switchTab('ingressos');", 'Meus ingressos') +
+                  linha("closeMenu(); switchTab('freelas');", 'Trabalhe na noite') +
+                  linha('sairDaConta()', 'Sair', 'c-danger')
+                : linha('closeMenu(); abrirLogin();', 'Entrar com celular', 'c-accent') +
+                  linha("closeMenu(); switchTab('freelas');", 'Trabalhe na noite');
 
             const casa = housesData.find(h => h.id === identidadeId);
             document.getElementById('menu-identidade').innerText = casa ? nomeCasa(casa) : 'Geral';
@@ -3294,13 +3415,455 @@
         function avatarConteudo() {
             const house = housesData.find(h => h.id === identidadeId);
             if (house) return `<img src="logo-casas/${house.id}.jpg" alt="" class="w-full h-full object-cover">`;
-            return escHtml((USUARIO.nome || 'S').charAt(0).toLocaleUpperCase('pt-BR'));
+            if (!sessao.logado) {
+                // Silhueta genérica: o visitante não tem inicial
+                return `<svg viewBox="0 0 24 24" width="58%" height="58%" fill="currentColor" class="c-2" aria-hidden="true"><circle cx="12" cy="8" r="4.2"/><path d="M3.5 21c.8-4.4 4.3-7 8.5-7s7.7 2.6 8.5 7z"/></svg>`;
+            }
+            return escHtml((sessao.nome || 'S').charAt(0).toLocaleUpperCase('pt-BR'));
         }
 
         function atualizarAvatar() {
             const btn = document.getElementById('avatar-btn');
             if (!btn) return;
             btn.innerHTML = `<span class="w-full h-full rounded-full overflow-hidden flex items-center justify-center">${avatarConteudo()}</span>`;
+        }
+
+        /* ===================================================================
+           SESSÃO E LOGIN
+           Telefone + código, sem senha (decisão #6). Na simulação, qualquer
+           código de 4 números passa e nenhuma mensagem é enviada.
+           =================================================================== */
+
+        let login = null;   // { etapa: telefone | codigo | nome, motivo, aoConcluir, telefone, canal, reenvioAte, timer }
+
+        const digitos = t => (t || '').replace(/\D/g, '');
+
+        function mascararTelefone(valor) {
+            const d = digitos(valor).slice(0, 11);
+            if (d.length <= 2) return d.length ? `(${d}` : '';
+            if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+            return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+        }
+
+        function abrirLogin(opcoes) {
+            opcoes = opcoes || {};
+            login = {
+                etapa: 'telefone',
+                motivo: opcoes.motivo || 'conta',
+                aoConcluir: opcoes.aoConcluir || null,
+                telefone: sessao.telefone || '',
+                canal: 'WhatsApp',
+                reenvioAte: 0,
+                timer: null
+            };
+            document.getElementById('login-sheet').classList.remove('hidden');
+            renderLogin();
+        }
+
+        function fecharLogin() {
+            if (login) clearInterval(login.timer);
+            login = null;
+            document.getElementById('login-sheet').classList.add('hidden');
+        }
+
+        function voltarLogin() {
+            if (!login) return;
+            clearInterval(login.timer);
+            login.etapa = 'telefone';
+            renderLogin();
+        }
+
+        function renderLogin() {
+            const caixa = document.getElementById('login-conteudo');
+            document.getElementById('login-voltar').classList.toggle('invisible', login.etapa === 'telefone');
+            const cabecalho = (tituloTxt, sub) => `
+                <div class="space-y-2 px-1">
+                    <h2 id="login-titulo" class="t-title2">${tituloTxt}</h2>
+                    <p class="t-sub c-2">${sub}</p>
+                </div>`;
+
+            if (login.etapa === 'telefone') {
+                caixa.innerHTML = `
+                    <div class="space-y-6">
+                        ${cabecalho('Entre com seu celular', login.motivo === 'reserva'
+                            ? 'Pra guardar seu lugar, a casa precisa saber quem vai. Sem senha: mandamos um código pra confirmar o número.'
+                            : 'Sem senha: mandamos um código pra confirmar que o número é seu.')}
+                        <div class="group-list on-fill">
+                            <label class="row">
+                                <span class="t-body c-2 shrink-0">+55</span>
+                                <input id="login-tel" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(62) 99999-9999"
+                                    value="${escHtml(login.telefone)}" oninput="aoDigitarTelefone(this)"
+                                    onkeydown="if (event.key === 'Enter') enviarCodigo('WhatsApp')" class="bare t-body flex-1" aria-label="Número de celular com DDD">
+                            </label>
+                        </div>
+                        <div class="space-y-1">
+                            <button id="login-enviar" onclick="enviarCodigo('WhatsApp')" class="press btn-primary w-full">
+                                <i data-lucide="message-circle" class="w-[18px] h-[18px]"></i>Receber código no WhatsApp
+                            </button>
+                            <button id="login-sms" onclick="enviarCodigo('SMS')" class="press w-full h-11 t-sub c-accent disabled:opacity-40">Prefiro receber por SMS</button>
+                        </div>
+                        <p class="t-foot c-3 text-center px-4">Simulação: nenhuma mensagem é enviada.</p>
+                    </div>`;
+                aoDigitarTelefone(document.getElementById('login-tel'));
+                focarDepois('login-tel');
+            } else if (login.etapa === 'codigo') {
+                caixa.innerHTML = `
+                    <div class="space-y-6">
+                        ${cabecalho('Digite o código', `Enviamos 4 números pelo ${login.canal} para <span class="text-white font-semibold whitespace-nowrap">${escHtml(login.telefone)}</span>.`)}
+                        <div class="otp">
+                            ${[0, 1, 2, 3].map(() => '<div class="otp-caixa" aria-hidden="true"></div>').join('')}
+                            <input id="login-codigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4"
+                                oninput="aoDigitarCodigo(this)" aria-label="Código de 4 números">
+                        </div>
+                        <div class="flex justify-center gap-6">
+                            <button id="login-reenviar" onclick="reenviarCodigo()" class="press h-11 t-sub c-accent disabled:text-[#8e8e93]"></button>
+                            <button onclick="voltarLogin()" class="press h-11 t-sub c-accent">Trocar número</button>
+                        </div>
+                        <p class="t-foot c-3 text-center px-4">Simulação: qualquer código de 4 números funciona.</p>
+                    </div>`;
+                aoDigitarCodigo(document.getElementById('login-codigo'));
+                iniciarContagemReenvio();
+                focarDepois('login-codigo');
+            } else {
+                caixa.innerHTML = `
+                    <div class="space-y-6">
+                        ${cabecalho('Como você quer aparecer na lista?', 'É o nome que a portaria vai procurar.')}
+                        <div class="group-list on-fill">
+                            <label class="row">
+                                <span class="t-body shrink-0">Nome</span>
+                                <input id="login-nome" type="text" autocomplete="name" placeholder="Nome e sobrenome"
+                                    oninput="document.getElementById('login-continuar').disabled = this.value.trim().length < 2"
+                                    onkeydown="if (event.key === 'Enter' && this.value.trim().length >= 2) concluirLogin(this.value)"
+                                    class="bare t-body c-2 flex-1 text-right">
+                            </label>
+                        </div>
+                        <button id="login-continuar" onclick="concluirLogin(document.getElementById('login-nome').value)" disabled class="press btn-primary w-full">Continuar</button>
+                        <p class="t-foot c-3 text-center px-4">Ao continuar, você aceita os <span class="underline">Termos de uso</span> e o <span class="underline">Aviso de privacidade</span>.</p>
+                    </div>`;
+                focarDepois('login-nome');
+            }
+            lucide.createIcons();
+        }
+
+        // Espera a folha terminar de subir; focar antes faz o iOS pular a tela.
+        function focarDepois(id) {
+            setTimeout(() => { const el = document.getElementById(id); if (el) el.focus(); }, 380);
+        }
+
+        function aoDigitarTelefone(input) {
+            input.value = mascararTelefone(input.value);
+            login.telefone = input.value;
+            const completo = digitos(input.value).length === 11;
+            document.getElementById('login-enviar').disabled = !completo;
+            document.getElementById('login-sms').disabled = !completo;
+        }
+
+        function enviarCodigo(canal) {
+            if (digitos(login.telefone).length !== 11) return;
+            login.canal = canal;
+            login.etapa = 'codigo';
+            login.reenvioAte = Date.now() + 30000;
+            renderLogin();
+        }
+
+        function iniciarContagemReenvio() {
+            clearInterval(login.timer);
+            const atualizar = () => {
+                const btn = document.getElementById('login-reenviar');
+                if (!btn || !login) return;
+                const s = Math.max(0, Math.ceil((login.reenvioAte - Date.now()) / 1000));
+                btn.disabled = s > 0;
+                btn.innerText = s > 0 ? `Reenviar em 0:${pad2(s)}` : 'Reenviar código';
+                if (s === 0) clearInterval(login.timer);
+            };
+            atualizar();
+            login.timer = setInterval(atualizar, 1000);
+        }
+
+        function reenviarCodigo() {
+            login.reenvioAte = Date.now() + 30000;
+            iniciarContagemReenvio();
+            showSuccessToast(`Código reenviado pelo ${login.canal}`);
+        }
+
+        function aoDigitarCodigo(input) {
+            input.value = digitos(input.value).slice(0, 4);
+            const v = input.value;
+            document.querySelectorAll('#login-conteudo .otp-caixa').forEach((c, i) => {
+                c.innerText = v[i] || '';
+                c.classList.toggle('atual', i === v.length);
+            });
+            if (v.length === 4) setTimeout(verificarCodigo, 250);
+        }
+
+        function verificarCodigo() {
+            if (!login || login.etapa !== 'codigo') return;
+            // Quem volta com o mesmo número já tem nome: pula direto para a lista.
+            const conhecido = sessao.nome && digitos(sessao.telefone) === digitos(login.telefone);
+            if (conhecido) return concluirLogin(sessao.nome, true);
+            login.etapa = 'nome';
+            renderLogin();
+        }
+
+        function concluirLogin(nome, deVolta) {
+            nome = (nome || '').trim();
+            if (nome.length < 2) return;
+            sessao.logado = true;
+            sessao.nome = nome;
+            sessao.telefone = login.telefone;
+            salvarSessao();
+            const aoConcluir = login.aoConcluir;
+            fecharLogin();
+            atualizarAvatar();
+            updateReservasUI();
+            const primeiro = nome.split(' ')[0];
+            showSuccessToast(deVolta ? `Que bom te ver de novo, ${primeiro}` : `Pronto, ${primeiro}`);
+            if (aoConcluir) aoConcluir();
+        }
+
+        function sairDaConta() {
+            sessao.logado = false;
+            salvarSessao();
+            closeMenu();
+            redesenharTudo();
+            showSuccessToast('Você saiu da conta');
+        }
+
+        // Atalho da demonstração: troca de papel sem passar pelo código.
+        function definirSessaoDemo(logado) {
+            if (logado && !sessao.nome) Object.assign(sessao, PERFIL_DEMO);
+            sessao.logado = logado;
+            salvarSessao();
+            redesenharTudo();
+            renderMenu();
+            showSuccessToast(logado ? `Logado como ${sessao.nome.split(' ')[0]}` : 'Modo visitante');
+        }
+
+        /* ===================================================================
+           ONBOARDING
+           Três telas com dados reais da noite e uma de localização. Aparece
+           na primeira visita; link direto (casa, aba, horário) vai direto ao
+           conteúdo, para o "vem pro Môi hoje" e para a demo dos sócios.
+           =================================================================== */
+
+        const CHAVE_ONBOARDING = 'gyn_onboarding_visto';
+        let passoOnboarding = 0;
+
+        function deveMostrarOnboarding() {
+            const p = new URLSearchParams(location.search);
+            if (p.get('onboarding') === '1') return true;
+            if (['casa', 'aba', 'hora'].some(k => p.has(k))) return false;
+            try { return !localStorage.getItem(CHAVE_ONBOARDING); } catch (e) { return false; }
+        }
+
+        function telaOnboarding(visual, tituloTxt, texto, rotulo) {
+            return `
+                <section aria-label="${rotulo}">
+                    <div class="flex-1 min-h-0 flex items-center justify-center py-4 overflow-hidden">${visual}</div>
+                    <div class="space-y-2 pb-1">
+                        <h2 class="t-title1">${tituloTxt}</h2>
+                        <p class="t-callout c-2">${texto}</p>
+                    </div>
+                </section>`;
+        }
+
+        function abrirOnboarding() {
+            const ref = agora();
+            const noites = noitesDaSemana(ref);
+            const agoraL = noites.filter(x => x.st.estado === 'agora');
+            const hojeL = noites.filter(x => x.st.estado === 'hoje');
+            const destaque = escolherDestaque(agoraL.length ? agoraL : (hojeL.length ? hojeL : noites), ref);
+
+            // 1. A noite de verdade, não uma ilustração
+            let visualNoite = '<i data-lucide="moon-star" class="w-16 h-16 c-2"></i>';
+            if (destaque) {
+                const { house, st } = destaque;
+                const ent = infoEntrada(st.prog, st.occ, ref);
+                const chip = st.estado === 'agora'
+                    ? '<span class="glass chip-glass"><span class="dot pulse"></span>Rolando agora</span>'
+                    : `<span class="glass chip-glass">${diaRelativo(st.inicio, ref)}, ${fmtHora(st.inicio)}</span>`;
+                visualNoite = `
+                    <article class="relative w-full h-full max-h-[340px] rounded-[24px] overflow-hidden bg-[#1c1c1e]">
+                        ${midiaHtml(house, 'absolute inset-0')}
+                        <div class="absolute inset-0 scrim-hero"></div>
+                        <div class="absolute top-4 left-4">${chip}</div>
+                        <div class="absolute left-5 right-5 bottom-5 flex flex-col gap-1.5">
+                            <div class="flex items-center gap-2 min-w-0">
+                                ${logoHtml(house, 'w-6 h-6')}
+                                <span class="t-foot font-semibold text-[#ebebf5] truncate">${nomeCasa(house)}</span>
+                            </div>
+                            <h3 class="t-title2">${nomeNoite(st.prog)}</h3>
+                            <span class="t-headline ${ent.urgente ? 'c-accent' : ''}">${ent.principal}</span>
+                        </div>
+                    </article>`;
+            }
+
+            // 2. Promoções com o relógio correndo; a que acabou aparece apagada
+            const ordem = [...agoraL, ...hojeL, ...noites.filter(x => x.st.estado === 'futura')];
+            const promos = ordem.flatMap(({ house, st }) => promosDaNoite(st.prog, st.occ, ref).map(x => ({ house, ...x })));
+            const vivas = promos.filter(x => x.st.estado !== 'expirada').slice(0, 3);
+            const apagada = promos.find(x => x.st.estado === 'expirada');
+            const linhasPromo = [...vivas, ...(apagada ? [apagada] : [])].map(({ house, promo, st }) => {
+                const t = tempoPromo(promo, st);
+                return `
+                    <div class="row ${st.estado === 'expirada' ? 'opacity-40' : ''}" style="--inset: 64px;">
+                        ${logoHtml(house, 'w-9 h-9')}
+                        <span class="flex-1 min-w-0 flex flex-col gap-0.5">
+                            <span class="t-callout font-semibold truncate">${promo.nome}</span>
+                            <span class="t-foot c-2 truncate">${nomeCasa(house)}</span>
+                        </span>
+                        <span class="t-foot shrink-0 ${t.classe}">${t.texto}</span>
+                    </div>`;
+            }).join('');
+            const visualPromo = linhasPromo
+                ? `<div class="group-list w-full min-w-0">${linhasPromo}</div>`
+                : '<i data-lucide="clock" class="w-16 h-16 c-2"></i>';
+
+            // 3. O Passe que a pessoa vai mostrar na porta
+            const casaPasse = destaque ? destaque.house : housesData[0];
+            const noitePasse = destaque ? destaque.st : null;
+            const visualPasse = `
+                <article class="w-full max-w-[290px] rounded-[22px] bg-[#1c1c1e] overflow-hidden">
+                    <div class="px-4 pt-4 flex items-center gap-2.5">
+                        ${logoHtml(casaPasse, 'w-8 h-8')}
+                        <span class="t-headline truncate flex-1">${nomeCasa(casaPasse)}</span>
+                        <span class="chip-glass" style="background: rgba(48,209,88,0.2); color: var(--live);"><i data-lucide="check" class="w-3 h-3"></i>Na lista</span>
+                    </div>
+                    ${noitePasse ? `<p class="px-4 pt-2 t-sub c-2 truncate">${nomeNoite(noitePasse.prog)} · ${infoEntrada(noitePasse.prog, noitePasse.occ, ref).curto}</p>` : ''}
+                    <div class="mt-4 border-t-[1.5px] border-dashed border-[#3a3a3c]"></div>
+                    <div class="py-4 flex flex-col items-center gap-2">
+                        <div class="ob-qr p-2.5 rounded-[12px] bg-white">${qrSvg('onboarding')}</div>
+                        <p class="t-foot c-2">Mostre na portaria</p>
+                    </div>
+                </article>`;
+
+            // 4. Localização, explicada antes do pedido do sistema
+            const visualLocal = visualPertoDeVoce();
+
+            const trilho = document.getElementById('ob-trilho');
+            trilho.innerHTML =
+                telaOnboarding(visualNoite, 'O que rola hoje em Goiânia', 'Bares e boates num lugar só, com quanto custa entrar agora. Sem abrir seis perfis no Instagram.', '1 de 4') +
+                telaOnboarding(visualPromo, 'Promoção tem hora pra acabar', 'Você vê o que ainda vale e quanto tempo falta. O que já acabou aparece apagado.', '2 de 4') +
+                telaOnboarding(visualPasse, 'Seu nome na lista, sem mandar direct', 'Um toque e o QR fica no app. Na porta, é só mostrar.', '3 de 4') +
+                telaOnboarding(visualLocal, 'Veja o que está perto de você', 'Com a localização, cada casa mostra a distância e o tempo de carro até lá. Usamos só enquanto o app está aberto.', '4 de 4');
+
+            document.getElementById('onboarding').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            trilho.scrollLeft = 0;
+            passoOnboarding = -1;
+            mostrarPassoOnboarding(0);
+        }
+
+        // Mini-mapa da tela de localização: as casas mais próximas em volta de
+        // "você", com o tempo de carro. Antes da permissão não há posição, então
+        // a origem é a mesma praça que o mapa usa na demonstração.
+        function visualPertoDeVoce() {
+            const o = ORIGEM_DEMO;
+            const kmLng = 111.32 * Math.cos(o.lat * Math.PI / 180);
+            const perto = housesData.filter(h => h.geo)
+                .map(h => {
+                    const km = distanciaKm(o, h.geo);
+                    return {
+                        house: h,
+                        dx: (h.geo.lng - o.lng) * kmLng,
+                        dy: -(h.geo.lat - o.lat) * 110.57,
+                        min: Math.max(3, Math.round(km * FATOR_RUA / VELOCIDADE_NOITE_KMH * 60) + 2)
+                    };
+                })
+                .sort((a, b) => a.min - b.min)
+                .slice(0, 4);
+            if (!perto.length) return '<i data-lucide="map-pin" class="w-16 h-16 c-2"></i>';
+
+            // Esquema, não escala: as casas ficam na direção real, mas abertas
+            // pelo menos 70° entre si e a uma distância que cresce com os minutos.
+            // Na escala real elas se amontoam no centro.
+            perto.forEach((p, i) => { p.ang = Math.atan2(p.dy, p.dx); p.r = 22 + i * 5; });
+            const porAngulo = perto.slice().sort((a, b) => a.ang - b.ang);
+            const MIN_SEP = 70 * Math.PI / 180;
+            for (let i = 1; i < porAngulo.length; i++) {
+                porAngulo[i].ang = Math.max(porAngulo[i].ang, porAngulo[i - 1].ang + MIN_SEP);
+            }
+            const pos = p => ({ x: Math.min(72, Math.max(18, 50 + Math.cos(p.ang) * p.r)), y: Math.min(76, Math.max(18, 50 + Math.sin(p.ang) * p.r)) });
+            const alvo = pos(perto[0]);
+
+            // Ruas: um anel e avenidas radiais, como o centro de Goiânia
+            const radiais = [0, 35, 72, 110, 148, 190, 232, 275, 318]
+                .map(g => { const r = g * Math.PI / 180; return `<line x1="50" y1="50" x2="${50 + Math.cos(r) * 90}" y2="${50 + Math.sin(r) * 90}"/>`; }).join('');
+            const grade = [12, 24, 37, 63, 76, 88]
+                .map(v => `<line x1="${v}" y1="0" x2="${v - 8}" y2="100"/><line x1="0" y1="${v}" x2="100" y2="${v + 6}"/>`).join('');
+
+            const pinos = perto.map((p, i) => {
+                const { x, y } = pos(p);
+                return `
+                    <span class="pino-envelope" style="position: absolute; left: ${x}%; top: ${y}%; transform: translate(-50%, -50%); animation: fade-in 0.4s ease ${0.15 + i * 0.12}s both;">
+                        <span class="pino" style="--anel: ${i === 0 ? 'var(--accent)' : '#636366'}">
+                            <span class="pino-ini">${escHtml(nomeCasa(p.house).charAt(0))}</span>
+                            <img src="logo-casas/${p.house.id}.jpg" alt="" onerror="this.remove()">
+                        </span>
+                        <span class="pino-min">${p.min} min</span>
+                    </span>`;
+            }).join('');
+
+            return `
+                <div class="relative rounded-[24px] overflow-hidden" style="width: min(100%, 320px, 40vh); aspect-ratio: 1; background: #14161b;" aria-hidden="true">
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="absolute inset-0 w-full h-full" fill="none">
+                        <g stroke="#1d2027" stroke-width="0.6">${grade}</g>
+                        <g stroke="#262a33" stroke-width="1.6">${radiais}</g>
+                        <circle cx="50" cy="50" r="27" stroke="#262a33" stroke-width="1.6"/>
+                        <line x1="50" y1="50" x2="${alvo.x}" y2="${alvo.y}" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="1 5" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+                    </svg>
+                    <span class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full" style="background: rgba(10,132,255,0.16); animation: pulse 2.4s ease-in-out infinite;"></span>
+                    <span class="eu-ponto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"></span>
+                    ${pinos}
+                    <span class="glass chip-glass absolute left-3 bottom-3 font-medium">
+                        <i data-lucide="navigation" class="w-3 h-3 c-accent"></i>${escHtml(nomeCasa(perto[0].house))} a ${perto[0].min} min
+                    </span>
+                </div>`;
+        }
+
+        function mostrarPassoOnboarding(i) {
+            if (i === passoOnboarding) return;
+            passoOnboarding = i;
+            const total = document.getElementById('ob-trilho').children.length;
+            document.getElementById('ob-pontos').innerHTML =
+                Array.from({ length: total }, (_, k) => `<span class="${k === i ? 'on' : ''}"></span>`).join('');
+            document.getElementById('ob-acoes').innerHTML = i < total - 1
+                ? `<button onclick="irParaPassoOnboarding(${i + 1})" class="press btn-primary w-full">Continuar</button>
+                   <span class="h-11" aria-hidden="true"></span>`
+                : `<button onclick="ativarLocalizacaoOnboarding()" class="press btn-primary w-full"><i data-lucide="navigation" class="w-[18px] h-[18px]"></i>Ativar localização</button>
+                   <button onclick="concluirOnboarding()" class="press h-11 t-headline c-accent">Agora não</button>`;
+            lucide.createIcons();
+        }
+
+        function aoRolarOnboarding() {
+            const trilho = document.getElementById('ob-trilho');
+            mostrarPassoOnboarding(Math.round(trilho.scrollLeft / trilho.clientWidth));
+        }
+
+        function irParaPassoOnboarding(i) {
+            const trilho = document.getElementById('ob-trilho');
+            const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            trilho.scrollTo({ left: i * trilho.clientWidth, behavior: suave ? 'smooth' : 'auto' });
+            mostrarPassoOnboarding(i);
+        }
+
+        // "Agora não" deixa a origem desconhecida: o mapa da Agenda pergunta de
+        // novo quando a pessoa abrir. Um "não" no pedido do sistema é definitivo.
+        function ativarLocalizacaoOnboarding() {
+            concluirOnboarding();
+            pedirLocalizacao();
+        }
+
+        function concluirOnboarding() {
+            try { localStorage.setItem(CHAVE_ONBOARDING, '1'); } catch (e) { /* aparece de novo na próxima visita */ }
+            document.getElementById('onboarding').classList.add('hidden');
+            document.body.style.overflow = '';
+            // Tira o ?onboarding=1 para o recarregar não repetir as boas-vindas
+            const url = new URL(location.href);
+            if (url.searchParams.has('onboarding')) {
+                url.searchParams.delete('onboarding');
+                history.replaceState(null, '', url);
+            }
         }
 
         // --- MODO GERENTE (DASHBOARD) ---
