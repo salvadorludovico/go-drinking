@@ -24,6 +24,10 @@
     <!-- Mapa: Leaflet + base escura da CARTO (dados OpenStreetMap) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <!-- Mapa vetorial (OpenFreeMap, sem chave) desenhado pelo MapLibre dentro do Leaflet -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js"></script>
+    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -176,7 +180,7 @@
         .pt-safe { padding-top: calc(env(safe-area-inset-top) + 14px); }
         /* Mapa */
         .mapa-moldura { isolation: isolate; } /* panes do Leaflet (z 400+) não passam por cima da barra inferior */
-        .leaflet-container { background: #1c1c1e; font-family: var(--font-body); }
+        .leaflet-container { background: #1a1d24; font-family: var(--font-body); }
         .leaflet-control-attribution { background: rgba(0,0,0,0.55) !important; color: #8e8e93 !important; font-size: 9px; }
         .leaflet-control-attribution a { color: #aeaeb2 !important; }
         .pino { position: relative; width: 44px; height: 44px; border-radius: 22px; border: 3px solid var(--anel, #636366); background: var(--fill-2); box-shadow: 0 4px 14px rgba(0,0,0,0.6); overflow: hidden; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease; }
@@ -804,12 +808,12 @@
 
             {
                 id: "vernissage",
-                endereco: "Setor Oeste, Goiânia",
-                geo: { lat: -16.6812, lng: -49.2722, aproximado: true }, // TODO: confirmar endereço exato
+                endereco: "Setor Sul, Goiânia",
+                geo: { lat: -16.6918, lng: -49.2565, aproximado: true }, // TODO: confirmar endereço exato
                 nome: "VERNISSAGE CLUB",
                 categoria: "boate",
                 especialidade: "Funk, Latin, Temático",
-                setor: "Setor Oeste",
+                setor: "Setor Sul",
                 instagram: "@vernissageclub",
                 theme: {
                     bgApp: "#030206", // Quase preto roxo
@@ -844,12 +848,12 @@
             },
             {
                 id: "point",
-                endereco: "Setor Bueno, Goiânia",
-                geo: { lat: -16.7045, lng: -49.269, aproximado: true }, // TODO: confirmar endereço exato
+                endereco: "Rua 8, Setor Central, Goiânia",
+                geo: { lat: -16.6757, lng: -49.2589, aproximado: true }, // Rua 8, ponto médio; TODO: confirmar o número
                 nome: "POINT GOIÂNIA",
                 categoria: "boate",
                 especialidade: "Funk, Baile, Eventos Especiais",
-                setor: "Bueno",
+                setor: "Setor Central",
                 instagram: "@pointgoiania",
                 theme: {
                     bgApp: "#050200", // Fundo laranja-preto profundo
@@ -2004,10 +2008,42 @@
                 .finally(() => clearTimeout(prazo));
         }
 
+        // Tempo e distância reais até todas as casas numa chamada só (serviço "table"
+        // do OSRM). Roda quando a origem fica conhecida; até lá vale a estimativa.
+        const temposReais = {};
+        let temposPedidoChave = null;
+
+        function buscarTemposReais() {
+            const o = origemAtual();
+            const casas = housesData.filter(h => h.geo);
+            if (!o || !casas.length) return;
+            const chaveOrigem = `${o.lat.toFixed(4)},${o.lng.toFixed(4)}`;
+            if (temposPedidoChave === chaveOrigem) return;   // já pedido para esta origem
+            temposPedidoChave = chaveOrigem;
+            const coords = [o, ...casas.map(h => h.geo)].map(p => `${p.lng},${p.lat}`).join(';');
+            fetch(`https://router.project-osrm.org/table/v1/driving/${coords}?sources=0&annotations=duration,distance`)
+                .then(r => r.json())
+                .then(d => {
+                    if (!d || d.code !== 'Ok') throw new Error('sem tabela');
+                    casas.forEach((h, i) => {
+                        const seg = d.durations[0][i + 1], m = d.distances[0][i + 1];
+                        if (seg == null || m == null) return;
+                        temposReais[chaveRota(o, h)] = { km: m / 1000, min: Math.max(1, Math.ceil(seg / 60) + 1) };
+                    });
+                    if (currentTab === 'agenda' && agendaModo === 'mapa' && mapaAgenda) {
+                        desenharPinos();
+                        if (pinoSelecionado) mostrarCartaoMapa(pinoSelecionado);
+                    }
+                    const alvo = document.getElementById('casa-distancia');
+                    if (alvo && currentTab === 'casa') alvo.innerHTML = distanciaCasaHtml(housesData.find(h => h.id === activeHouseId));
+                })
+                .catch(() => { temposPedidoChave = null; }); // falhou: segue com a estimativa e tenta de novo depois
+        }
+
         function trajeto(house) {
             const o = origemAtual();
             if (!o || !house.geo) return null;
-            const real = rotasReais[chaveRota(o, house)];
+            const real = rotasReais[chaveRota(o, house)] || temposReais[chaveRota(o, house)];
             if (real) {
                 const kmTxt = real.km < 1 ? `${Math.round(real.km * 1000 / 50) * 50} m` : `${real.km.toFixed(1).replace('.', ',')} km`;
                 return { km: real.km, min: real.min, texto: `${kmTxt} · ${real.min} min de carro` };
@@ -2069,6 +2105,7 @@
 
         // Atualiza só o que depende da origem, sem redesenhar a tela inteira.
         function aoMudarOrigem() {
+            buscarTemposReais();
             if (currentTab === 'agenda' && agendaModo === 'mapa') {
                 desenharEu();
                 desenharPinos();
@@ -2109,14 +2146,90 @@
             });
         }
 
+        // Paleta noturna no espírito do Apple Maps escuro: fundo azul-noite,
+        // parques em verde fundo, água azul, ruas em cinza-azulado e rótulos discretos.
+        const CORES_MAPA = {
+            fundo: '#1a1d24', bairro: '#1d2129', verde: '#1b2a22', agua: '#0d2236', aguaTexto: '#4c6f93',
+            predio: '#232832', contorno: '#1a1d24', ruaMenor: '#2c323d', ruaMaior: '#3b4252', rodovia: '#4b5466',
+            trilho: '#2a2f39', limite: '#3a3f4b', texto: '#7c818c', textoForte: '#b0b4bd'
+        };
+        let estiloNoturno = null;
+
+        function suportaWebGL() {
+            try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); }
+            catch (e) { return false; }
+        }
+
+        function carregarEstiloNoturno() {
+            if (!estiloNoturno) {
+                estiloNoturno = fetch('https://tiles.openfreemap.org/styles/dark')
+                    .then(r => { if (!r.ok) throw new Error('estilo'); return r.json(); })
+                    .then(recolorirEstilo);
+                estiloNoturno.catch(() => { estiloNoturno = null; }); // tenta de novo na próxima vez
+            }
+            return estiloNoturno;
+        }
+
+        // O que não ajuda a escolher um bar sai do mapa; nomes de rua só de perto.
+        const CAMADAS_OCULTAS = /^(building|road_oneway|road_oneway_opposite|highway_path|road_pier|road_area_pier|railway.*|aeroway.*|boundary.*|place_other|place_village|place_country.*|place_state|landcover_ice_shelf|landcover_glacier)$/;
+        const ZOOM_MINIMO = { highway_name_other: 16, highway_name_motorway: 14, highway_minor: 13, place_suburb: 12 };
+
+        function recolorirEstilo(estilo) {
+            const C = CORES_MAPA;
+            estilo.layers = estilo.layers.filter(l => !CAMADAS_OCULTAS.test(l.id));
+            estilo.layers.forEach(l => { if (ZOOM_MINIMO[l.id]) l.minzoom = Math.max(l.minzoom || 0, ZOOM_MINIMO[l.id]); });
+            estilo.layers.forEach(l => {
+                const p = l.paint = l.paint || {};
+                const id = l.id, fill = l.type === 'fill';
+                // Rótulos (symbol) só recebem cor de texto: um nome como "place_country_minor"
+                // não pode cair na regra das ruas, senão o MapLibre rejeita o estilo inteiro.
+                if (l.type === 'symbol' || l.type === 'raster') { /* tratado abaixo */ }
+                else if (l.type === 'background') p['background-color'] = C.fundo;
+                else if (id === 'water') p['fill-color'] = C.agua;
+                else if (id === 'waterway') p['line-color'] = C.agua;
+                else if (/park|wood/.test(id)) { delete p['fill-pattern']; p['fill-color'] = C.verde; }
+                else if (/residential|ice|glacier/.test(id)) p['fill-color'] = C.bairro;
+                else if (id === 'building') p['fill-color'] = C.predio;
+                else if (/aeroway/.test(id)) fill ? p['fill-color'] = C.predio : p['line-color'] = C.ruaMenor;
+                else if (/casing/.test(id)) p['line-color'] = C.contorno;
+                else if (/motorway_(inner|subtle)/.test(id)) p['line-color'] = C.rodovia;
+                else if (/major_(inner|subtle)/.test(id)) p['line-color'] = C.ruaMaior;
+                else if (/minor|path|pier/.test(id)) fill ? p['fill-color'] = C.fundo : p['line-color'] = C.ruaMenor;
+                else if (/railway/.test(id)) p['line-color'] = C.trilho;
+                else if (/boundary/.test(id)) p['line-color'] = C.limite;
+                if (l.type === 'symbol') {
+                    p['text-color'] = id === 'water_name' ? C.aguaTexto : (/place/.test(id) ? C.textoForte : C.texto);
+                    p['text-halo-color'] = C.fundo;
+                }
+            });
+            return estilo;
+        }
+
         function criarMapaBase(elemento, opcoes) {
             const mapa = L.map(elemento, Object.assign({ zoomControl: false, attributionControl: false }, opcoes || {}));
-            // Base cinza-escura da Esri: não exige chave. (A CARTO passou a exigir e devolve marca d'água.)
-            const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
-            L.tileLayer(esri + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 16, attribution: 'Mapa © <a href="https://www.esri.com">Esri</a>, OpenStreetMap e colaboradores'
-            }).addTo(mapa);
-            L.tileLayer(esri + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(mapa);
+            const usarEsri = () => {
+                if (mapa._removido) return;
+                // Reserva: base cinza-escura da Esri, sem chave. (A CARTO passou a exigir.)
+                const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+                L.tileLayer(esri + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 16, attribution: 'Mapa © <a href="https://www.esri.com">Esri</a>, OpenStreetMap e colaboradores'
+                }).addTo(mapa);
+                L.tileLayer(esri + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(mapa);
+            };
+            mapa.on('unload', () => { mapa._removido = true; });
+            if (L.maplibreGL && window.maplibregl && suportaWebGL()) {
+                carregarEstiloNoturno()
+                    .then(estilo => {
+                        if (mapa._removido) return;
+                        L.maplibreGL({
+                            style: JSON.parse(JSON.stringify(estilo)),
+                            attribution: '© <a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                        }).addTo(mapa);
+                    })
+                    .catch(usarEsri);
+            } else {
+                usarEsri();
+            }
             L.control.attribution({ prefix: false, position: opcoes && opcoes.atribuicaoEmCima ? 'topleft' : 'bottomright' }).addTo(mapa);
             return mapa;
         }
@@ -2172,6 +2285,7 @@
                 if (primeiraVez) centralizarMapaAgenda();
             }, 60);
             if (origemTipo === 'desconhecida') pedirLocalizacao();
+            else buscarTemposReais();
         }
 
         function desenharPinos() {
@@ -3424,10 +3538,6 @@
                 }).join('')}</div>`;
             }
 
-            const refPainel = agora();
-            const opcoesDia = DIAS_TITULO.map((d, i) =>
-                `<option value="${i}" ${i === refPainel.getDay() ? 'selected' : ''}>${d}</option>`).join('');
-
             view.innerHTML = `
                 <div class="flex items-end justify-between gap-3">
                     <div class="min-w-0">
@@ -3454,34 +3564,8 @@
                 </section>
 
                 ${htmlEquipeFreela(houseId)}
-
-                <!-- Relógio de demonstração: a reunião raramente acontece às 22h de sexta.
-                     Sem isto, a demo abre com tudo fechado e o app parece vazio. -->
-                <section class="space-y-2">
-                    <p class="t-cap c-2 px-4">Simular horário</p>
-                    <div class="group-list">
-                        <label class="row justify-between">
-                            <span class="t-body shrink-0">Dia</span>
-                            <select id="sim-dia" class="bare t-body c-2 text-right flex-1 cursor-pointer" style="text-align-last: right;">${opcoesDia}</select>
-                        </label>
-                        <label class="row justify-between">
-                            <span class="t-body shrink-0">Hora</span>
-                            <input type="time" id="sim-hora" value="${pad2(refPainel.getHours())}:${pad2(refPainel.getMinutes())}" class="bare t-body c-2 text-right">
-                        </label>
-                        <button onclick="aplicarSimulacaoDoPainel()" class="press row"><span class="t-body c-accent">Aplicar horário</span></button>
-                        ${simulacaoAtiva() ? `<button onclick="limparSimulacao(); openManagerDashboard();" class="press row"><span class="t-body c-accent">Voltar ao tempo real</span></button>` : ''}
-                    </div>
-                </section>
             `;
             lucide.createIcons();
-        }
-
-        function aplicarSimulacaoDoPainel() {
-            const dia = parseInt(document.getElementById('sim-dia').value);
-            const hora = document.getElementById('sim-hora').value || '21:00';
-            aplicarSimulacao(dia, hora);
-            showSuccessToast(`Simulando ${DIAS_TITULO[dia].toLowerCase()}, ${hora}`);
-            openManagerDashboard();
         }
 
         function confirmPresence(id) {
