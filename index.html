@@ -21,6 +21,10 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- Mapa: Leaflet + base escura da CARTO (dados OpenStreetMap) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -170,6 +174,19 @@
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
         .pt-safe { padding-top: calc(env(safe-area-inset-top) + 14px); }
+        /* Mapa */
+        .mapa-moldura { isolation: isolate; } /* panes do Leaflet (z 400+) não passam por cima da barra inferior */
+        .leaflet-container { background: #1c1c1e; font-family: var(--font-body); }
+        .leaflet-control-attribution { background: rgba(0,0,0,0.55) !important; color: #8e8e93 !important; font-size: 9px; }
+        .leaflet-control-attribution a { color: #aeaeb2 !important; }
+        .pino { position: relative; width: 44px; height: 44px; border-radius: 22px; border: 3px solid var(--anel, #636366); background: var(--fill-2); box-shadow: 0 4px 14px rgba(0,0,0,0.6); overflow: hidden; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease; }
+        .pino img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+        .pino-ini { font-size: 15px; font-weight: 700; color: #ffffff; }
+        .pino-envelope { position: relative; width: 44px; height: 44px; }
+        .pino-envelope.sel .pino { transform: scale(1.18); }
+        .pino-envelope.apagado { opacity: 0.5; }
+        .pino-nome { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 600; color: #ffffff; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+        .eu-ponto { width: 18px; height: 18px; border-radius: 9px; background: #0a84ff; border: 3px solid #ffffff; box-shadow: 0 0 0 8px rgba(10,132,255,0.25); }
         .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 20px); }
 
         @media (prefers-reduced-motion: reduce) {
@@ -298,10 +315,25 @@
                 <div class="pt-safe px-4 space-y-0.5">
                     <h1 class="t-large pt-3">Agenda</h1>
                     <p id="agenda-resumo" class="t-sub c-2"></p>
+                    <div class="segmented !mt-3" role="tablist" aria-label="Ver a agenda como">
+                        <button type="button" role="tab" id="seg-agenda-lista" onclick="setAgendaModo('lista')">Lista</button>
+                        <button type="button" role="tab" id="seg-agenda-mapa" onclick="setAgendaModo('mapa')">Mapa</button>
+                    </div>
                 </div>
                 <div id="agenda-dias" class="rail pt-4" role="group" aria-label="Escolher o dia"></div>
                 <div id="agenda-lista" class="px-4 pt-5 space-y-8">
                     <!-- Gerado via renderAgenda() -->
+                </div>
+                <div id="agenda-mapa" class="hidden px-4 pt-4">
+                    <div class="mapa-moldura relative rounded-[18px] overflow-hidden bg-[#1c1c1e]" style="height: max(380px, calc(100dvh - 330px));">
+                        <div id="mapa-agenda" class="absolute inset-0"></div>
+                        <button type="button" onclick="centralizarMapaAgenda()" aria-label="Mostrar todas as casas e a minha localização"
+                                class="press glass absolute top-3 right-3 z-[1000] w-10 h-10 rounded-full flex items-center justify-center">
+                            <i data-lucide="locate-fixed" class="w-5 h-5"></i>
+                        </button>
+                        <div id="mapa-cartao" class="absolute left-3 right-3 bottom-3 z-[1000] hidden"></div>
+                    </div>
+                    <p id="mapa-rodape" class="t-foot c-3 pt-3 px-1 space-y-1"></p>
                 </div>
             </section>
 
@@ -572,6 +604,8 @@
             },
             {
                 id: "moi",
+                endereco: "Setor Bueno, Goiânia",
+                geo: { lat: -16.701, lng: -49.2745, aproximado: true }, // TODO: confirmar endereço exato
                 nome: "MÔI GOIÂNIA",
                 categoria: "bar",
                 especialidade: "Funk, Eletrônico, Hits",
@@ -643,6 +677,8 @@
             },
             {
                 id: "fluxo",
+                endereco: "Setor Sul, Goiânia",
+                geo: { lat: -16.6895, lng: -49.254, aproximado: true }, // TODO: confirmar endereço exato
                 nome: "FLUXO BAR",
                 categoria: "boate",
                 especialidade: "Funk, Pop, Rap, Trap",
@@ -714,6 +750,8 @@
             },
             {
                 id: "cajuina",
+                endereco: "Setor Sul, Goiânia",
+                geo: { lat: -16.6935, lng: -49.25, aproximado: true }, // TODO: confirmar endereço exato
                 nome: "CAJUÍNA",
                 categoria: "bar",
                 especialidade: "Pagode, Forró, Sertanejo",
@@ -754,6 +792,8 @@
 
             {
                 id: "vernissage",
+                endereco: "Setor Oeste, Goiânia",
+                geo: { lat: -16.6812, lng: -49.2722, aproximado: true }, // TODO: confirmar endereço exato
                 nome: "VERNISSAGE CLUB",
                 categoria: "boate",
                 especialidade: "Funk, Latin, Temático",
@@ -792,6 +832,8 @@
             },
             {
                 id: "point",
+                endereco: "Setor Bueno, Goiânia",
+                geo: { lat: -16.7045, lng: -49.269, aproximado: true }, // TODO: confirmar endereço exato
                 nome: "POINT GOIÂNIA",
                 categoria: "boate",
                 especialidade: "Funk, Baile, Eventos Especiais",
@@ -832,6 +874,8 @@
             },
             {
                 id: "mosaic",
+                endereco: "Setor Marista, perto do Shopping Bougainville",
+                geo: { lat: -16.696, lng: -49.2648, aproximado: true }, // TODO: confirmar endereço exato
                 nome: "MOSAIC",
                 categoria: "boate",
                 especialidade: "Pop, Eletropop, Hyperpop",
@@ -1192,6 +1236,7 @@
             }
             const diaAgenda = p.get('agenda');   // hoje | amanha | fds
             if (aba === 'agenda' && ['hoje', 'amanha', 'fds'].includes(diaAgenda)) agendaDia = diaAgenda;
+            if (aba === 'agenda' && p.get('modo') === 'mapa') agendaModo = 'mapa';
             if (aba && ['hoje', 'agenda', 'vibes', 'ingressos', 'freelas', 'discover', 'promos', 'reservas'].includes(aba)) switchTab(aba);
         }
 
@@ -1867,8 +1912,356 @@
                 : `${DIAS_TITULO[primeiro.getDay()]} ${primeiro.getDate()} a ${DIAS_TITULO[ultimo.getDay()].toLowerCase()} ${ultimo.getDate()} de ${MESES_LONGO[ultimo.getMonth()]}`;
             document.getElementById('agenda-resumo').innerText = resumo;
 
-            view.innerHTML = dias.map(d => blocoDiaHtml(d, ref, !unico)).join('');
+            const noMapa = agendaModo === 'mapa';
+            document.getElementById('seg-agenda-lista').setAttribute('aria-selected', String(!noMapa));
+            document.getElementById('seg-agenda-mapa').setAttribute('aria-selected', String(noMapa));
+            view.classList.toggle('hidden', noMapa);
+            document.getElementById('agenda-mapa').classList.toggle('hidden', !noMapa);
+
+            if (noMapa) atualizarMapaAgenda(dias, ref);
+            else view.innerHTML = dias.map(d => blocoDiaHtml(d, ref, !unico)).join('');
             lucide.createIcons();
+        }
+
+        /* ===================================================================
+           MAPA E DISTÂNCIA
+           A posição das casas é aproximada (centro do bairro) até termos o
+           endereço exato. A localização do cliente só é pedida quando ele abre
+           o mapa ou toca em "ver distância". Sem permissão, ou longe de Goiânia,
+           usamos um ponto de demonstração e dizemos isso na tela.
+           =================================================================== */
+
+        const CENTRO_GOIANIA = { lat: -16.6869, lng: -49.2648 };
+        const ORIGEM_DEMO = { lat: -16.6936, lng: -49.2706, nome: 'Praça Tamandaré' };
+        const RAIO_CIDADE_KM = 60;
+        const FATOR_RUA = 1.35;          // rua não é linha reta
+        const VELOCIDADE_NOITE_KMH = 28; // trânsito da noite em Goiânia (julgamento, não medido)
+
+        let minhaPosicao = null;              // { lat, lng }
+        let origemTipo = 'desconhecida';      // desconhecida | pedindo | real | demo
+        let origemMotivo = '';
+        let agendaModo = 'lista';             // lista | mapa
+        let mapaAgenda = null, camadaPinos = null, marcadorEu = null;
+        let mapaCasa = null;
+        let pinoSelecionado = null;
+        let itensMapaAtual = [];
+
+        function distanciaKm(a, b) {
+            const rad = x => x * Math.PI / 180;
+            const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+            return 2 * 6371 * Math.asin(Math.sqrt(h));
+        }
+
+        function origemAtual() {
+            return origemTipo === 'real' ? minhaPosicao : (origemTipo === 'demo' ? ORIGEM_DEMO : null);
+        }
+
+        // "2,4 km · ~7 min de carro". null se ainda não sabemos de onde o cliente sai.
+        function trajeto(house) {
+            const o = origemAtual();
+            if (!o || !house.geo) return null;
+            const km = distanciaKm(o, house.geo) * FATOR_RUA;
+            const min = Math.max(3, Math.round(km / VELOCIDADE_NOITE_KMH * 60) + 2);
+            const kmTxt = km < 1 ? `${Math.round(km * 1000 / 50) * 50} m` : `${km.toFixed(1).replace('.', ',')} km`;
+            return { km, min, texto: `${kmTxt} · ~${min} min de carro` };
+        }
+
+        function linkMaps(house) {
+            return `https://www.google.com/maps/dir/?api=1&destination=${house.geo.lat},${house.geo.lng}&travelmode=driving`;
+        }
+
+        function linkUber(house) {
+            const p = new URLSearchParams({
+                action: 'setPickup', pickup: 'my_location',
+                'dropoff[latitude]': house.geo.lat, 'dropoff[longitude]': house.geo.lng,
+                'dropoff[nickname]': nomeCasa(house)
+            });
+            return `https://m.uber.com/ul/?${p}`;
+        }
+
+        function botoesRotaHtml(house) {
+            return `
+                <a href="${linkMaps(house)}" target="_blank" rel="noopener" class="press btn-secondary flex-1 justify-center">
+                    <i data-lucide="navigation" class="w-4 h-4"></i>Maps
+                </a>
+                <a href="${linkUber(house)}" target="_blank" rel="noopener" class="press btn-secondary flex-1 justify-center">
+                    <i data-lucide="car" class="w-4 h-4"></i>Uber
+                </a>`;
+        }
+
+        function pedirLocalizacao() {
+            if (origemTipo === 'pedindo') return;
+            const usarDemo = motivo => { origemTipo = 'demo'; origemMotivo = motivo; aoMudarOrigem(); };
+            if (!navigator.geolocation) return usarDemo('sem-suporte');
+            origemTipo = 'pedindo';
+            aoMudarOrigem();
+            navigator.geolocation.getCurrentPosition(pos => {
+                const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                if (distanciaKm(p, CENTRO_GOIANIA) > RAIO_CIDADE_KM) return usarDemo('longe');
+                minhaPosicao = p;
+                origemTipo = 'real';
+                origemMotivo = '';
+                aoMudarOrigem();
+            }, () => usarDemo('negada'), { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
+        }
+
+        function textoOrigem() {
+            if (origemTipo === 'real') return 'Distância a partir de onde você está.';
+            if (origemTipo === 'pedindo') return 'Buscando sua localização…';
+            if (origemTipo === 'demo') {
+                const porque = origemMotivo === 'longe' ? 'Você está fora de Goiânia' : 'Sem acesso à sua localização';
+                return `${porque}: distância a partir da ${ORIGEM_DEMO.nome}, para demonstração.`;
+            }
+            return '';
+        }
+
+        // Atualiza só o que depende da origem, sem redesenhar a tela inteira.
+        function aoMudarOrigem() {
+            if (currentTab === 'agenda' && agendaModo === 'mapa') {
+                desenharEu();
+                desenharRodapeMapa();
+                if (pinoSelecionado) mostrarCartaoMapa(pinoSelecionado);
+                if (origemTipo === 'real') centralizarMapaAgenda();
+            }
+            const alvo = document.getElementById('casa-distancia');
+            if (alvo && currentTab === 'casa') alvo.innerHTML = distanciaCasaHtml(housesData.find(h => h.id === activeHouseId));
+        }
+
+        function anelDoEstado(estado) {
+            if (estado === 'agora') return 'var(--live)';
+            if (estado === 'futura') return 'var(--accent)';
+            return '#636366';
+        }
+
+        function iconePino(house, estado, opts) {
+            opts = opts || {};
+            const classes = ['pino-envelope'];
+            if (opts.selecionado) classes.push('sel');
+            if (!estado || estado === 'encerrada') classes.push('apagado');
+            return L.divIcon({
+                className: '',
+                iconSize: [44, 44],
+                iconAnchor: [22, 22],
+                html: `
+                    <span class="${classes.join(' ')}">
+                        <span class="pino" style="--anel: ${anelDoEstado(estado)}">
+                            <span class="pino-ini">${escHtml(nomeCasa(house).charAt(0))}</span>
+                            <img src="logo-casas/${house.id}.jpg" alt="" onerror="this.remove()">
+                        </span>
+                        ${opts.semNome ? '' : `<span class="pino-nome">${escHtml(nomeCasa(house))}</span>`}
+                    </span>`
+            });
+        }
+
+        function criarMapaBase(elemento, opcoes) {
+            const mapa = L.map(elemento, Object.assign({ zoomControl: false, attributionControl: false }, opcoes || {}));
+            // Base cinza-escura da Esri: não exige chave. (A CARTO passou a exigir e devolve marca d'água.)
+            const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+            L.tileLayer(esri + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 16, attribution: 'Mapa © <a href="https://www.esri.com">Esri</a>, OpenStreetMap e colaboradores'
+            }).addTo(mapa);
+            L.tileLayer(esri + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(mapa);
+            L.control.attribution({ prefix: false, position: opcoes && opcoes.atribuicaoEmCima ? 'topleft' : 'bottomright' }).addTo(mapa);
+            return mapa;
+        }
+
+        function setAgendaModo(modo) {
+            agendaModo = modo;
+            pinoSelecionado = null;
+            renderAgenda();
+            window.scrollTo(0, 0);
+        }
+
+        // Uma entrada por casa fixa: a noite mais relevante da seleção (agora > mais cedo).
+        function itensDoMapa(dias, ref) {
+            const porCasa = new Map();
+            dias.forEach(d => noitesDoDia(d, ref).forEach(i => {
+                const atual = porCasa.get(i.house.id);
+                const peso = { agora: 0, futura: 1, encerrada: 2 };
+                if (!atual || peso[i.estado] < peso[atual.estado]) porCasa.set(i.house.id, i);
+            }));
+            const fixas = housesData.filter(h => h.geo).map(h => porCasa.get(h.id) || { house: h, prog: null, occ: null, estado: null });
+            const itinerantes = [...porCasa.values()].filter(i => !i.house.geo).map(i => i.house);
+            return { fixas, itinerantes };
+        }
+
+        function atualizarMapaAgenda(dias, ref) {
+            if (typeof L === 'undefined') {
+                document.getElementById('mapa-agenda').innerHTML = '<p class="t-sub c-2 p-6 text-center">Não foi possível carregar o mapa. Verifique a conexão.</p>';
+                return;
+            }
+            const primeiraVez = !mapaAgenda;
+            if (primeiraVez) {
+                mapaAgenda = criarMapaBase('mapa-agenda');
+                camadaPinos = L.layerGroup().addTo(mapaAgenda);
+                mapaAgenda.on('click', () => { pinoSelecionado = null; desenharPinos(); esconderCartaoMapa(); });
+            }
+            const { fixas, itinerantes } = itensDoMapa(dias, ref);
+            itensMapaAtual = fixas;
+            mapaAgenda._itinerantes = itinerantes;
+            desenharPinos();
+            desenharEu();
+            desenharRodapeMapa();
+            if (pinoSelecionado) mostrarCartaoMapa(pinoSelecionado); else esconderCartaoMapa();
+
+            // O contêiner acabou de aparecer: o Leaflet precisa medir de novo antes de
+            // enquadrar. Enquadrar com tamanho zero abre o mapa no zoom mínimo.
+            if (primeiraVez) mapaAgenda.setView([CENTRO_GOIANIA.lat, CENTRO_GOIANIA.lng], 14);
+            setTimeout(() => {
+                mapaAgenda.invalidateSize();
+                if (primeiraVez) centralizarMapaAgenda();
+            }, 60);
+            if (origemTipo === 'desconhecida') pedirLocalizacao();
+        }
+
+        function desenharPinos() {
+            camadaPinos.clearLayers();
+            itensMapaAtual.forEach(item => {
+                const sel = pinoSelecionado === item.house.id;
+                const m = L.marker([item.house.geo.lat, item.house.geo.lng], {
+                    icon: iconePino(item.house, item.estado, { selecionado: sel }),
+                    zIndexOffset: sel ? 1000 : (item.estado === 'agora' ? 500 : 0),
+                    keyboard: true, title: nomeCasa(item.house)
+                });
+                m.on('click', e => {
+                    L.DomEvent.stopPropagation(e);
+                    pinoSelecionado = item.house.id;
+                    desenharPinos();
+                    mostrarCartaoMapa(item.house.id);
+                    mapaAgenda.panTo([item.house.geo.lat, item.house.geo.lng], { animate: true });
+                });
+                camadaPinos.addLayer(m);
+            });
+        }
+
+        function desenharEu() {
+            if (!mapaAgenda) return;
+            const o = origemAtual();
+            if (marcadorEu) { marcadorEu.remove(); marcadorEu = null; }
+            if (!o) return;
+            marcadorEu = L.marker([o.lat, o.lng], {
+                icon: L.divIcon({ className: '', iconSize: [18, 18], iconAnchor: [9, 9], html: '<span class="eu-ponto block"></span>' }),
+                interactive: false, zIndexOffset: -100
+            }).addTo(mapaAgenda);
+        }
+
+        function centralizarMapaAgenda() {
+            if (!mapaAgenda) return;
+            const pontos = itensMapaAtual.map(i => [i.house.geo.lat, i.house.geo.lng]);
+            const o = origemAtual();
+            if (o) pontos.push([o.lat, o.lng]);
+            if (!pontos.length) return mapaAgenda.setView([CENTRO_GOIANIA.lat, CENTRO_GOIANIA.lng], 13);
+            mapaAgenda.invalidateSize();
+            mapaAgenda.fitBounds(pontos, { padding: [56, 56], maxZoom: 15 });
+        }
+
+        function desenharRodapeMapa() {
+            const el = document.getElementById('mapa-rodape');
+            if (!el) return;
+            const linhas = [];
+            const origem = textoOrigem();
+            if (origem) linhas.push(origemTipo === 'demo'
+                ? `${origem} <button type="button" onclick="pedirLocalizacao()" class="c-accent font-semibold">Usar a minha</button>`
+                : origem);
+            const itin = (mapaAgenda && mapaAgenda._itinerantes) || [];
+            if (itin.length) linhas.push(`${itin.map(nomeCasa).join(' e ')} ${itin.length === 1 ? 'muda' : 'mudam'} de local a cada edição e não ${itin.length === 1 ? 'aparece' : 'aparecem'} no mapa.`);
+            el.innerHTML = linhas.map(l => `<span class="block">${l}</span>`).join('');
+        }
+
+        function esconderCartaoMapa() {
+            const c = document.getElementById('mapa-cartao');
+            if (c) { c.classList.add('hidden'); c.innerHTML = ''; }
+        }
+
+        function mostrarCartaoMapa(houseId) {
+            const item = itensMapaAtual.find(i => i.house.id === houseId);
+            const c = document.getElementById('mapa-cartao');
+            if (!item || !c) return;
+            const { house, prog, occ, estado } = item;
+            const ref = agora();
+            const t = trajeto(house);
+
+            let status = '', noite = '', entrada = '';
+            if (prog) {
+                status = estado === 'agora'
+                    ? `<span class="c-live font-semibold flex items-center gap-1.5"><span class="dot pulse"></span>Agora</span>`
+                    : estado === 'encerrada' ? '<span class="c-2">Encerrada</span>'
+                    : `<span class="c-accent font-semibold">${diaRelativo(occ.inicio, ref)} · ${fmtHora(occ.inicio)}</span>`;
+                noite = `${nomeNoite(prog)} · ${fmtHora(occ.inicio)} – ${fmtHora(occ.fim)}`;
+                entrada = infoEntrada(prog, occ, ref).principal;
+            } else {
+                status = '<span class="c-2">Sem programação nestes dias</span>';
+            }
+
+            c.innerHTML = `
+                <div class="glass rounded-[18px] p-3 space-y-3 shadow-2xl">
+                    <button type="button" onclick="openHouseDetail('${house.id}'${prog ? `, '${prog.id}'` : ''})" class="press w-full flex gap-3 text-left">
+                        ${midiaHtml(house, 'w-16 h-16 rounded-xl shrink-0', 'thumb')}
+                        <span class="flex-1 min-w-0 flex flex-col">
+                            <span class="t-foot flex items-center gap-2">${status}</span>
+                            <span class="t-headline truncate">${nomeCasa(house)}</span>
+                            ${noite ? `<span class="t-foot c-2 truncate">${noite}</span>` : ''}
+                            ${entrada ? `<span class="t-sub font-semibold">${entrada}</span>` : ''}
+                        </span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-[#636366] shrink-0 self-center"></i>
+                    </button>
+                    <p class="t-foot c-2 flex items-center gap-1.5">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5 shrink-0"></i>
+                        ${t ? t.texto : (origemTipo === 'pedindo' ? 'Calculando distância…' : escHtml(house.endereco || house.setor))}
+                    </p>
+                    <div class="flex gap-2">${botoesRotaHtml(house)}</div>
+                </div>`;
+            c.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        // Página da casa: bloco "Como chegar"
+        function distanciaCasaHtml(house) {
+            if (!house || !house.geo) return '';
+            const t = trajeto(house);
+            if (t) return `${t.texto}${origemTipo === 'demo' ? ` <span class="c-3">(a partir da ${ORIGEM_DEMO.nome})</span>` : ''}`;
+            if (origemTipo === 'pedindo') return 'Buscando sua localização…';
+            return `<button type="button" onclick="pedirLocalizacao()" class="c-accent font-semibold">Ver a distância daqui</button>`;
+        }
+
+        function comoChegarHtml(house) {
+            if (!house.geo) {
+                return `
+                    <section class="space-y-2.5">
+                        <h2 class="t-title3">Onde é</h2>
+                        <div class="group-list px-4 py-3.5">
+                            <p class="t-sub c-2">O local muda a cada edição. A produtora divulga o endereço no Instagram.</p>
+                        </div>
+                    </section>`;
+            }
+            return `
+                <section class="space-y-2.5">
+                    <h2 class="t-title3">Como chegar</h2>
+                    <div class="mapa-moldura rounded-[18px] bg-[#1c1c1e] overflow-hidden">
+                        <div id="mapa-casa" class="h-[160px]"></div>
+                        <div class="px-4 py-3.5 space-y-3">
+                            <div class="space-y-0.5">
+                                <p class="t-callout font-semibold">${escHtml(house.endereco || house.setor)}</p>
+                                <p id="casa-distancia" class="t-foot c-2">${distanciaCasaHtml(house)}</p>
+                            </div>
+                            <div class="flex gap-2">${botoesRotaHtml(house)}</div>
+                        </div>
+                    </div>
+                </section>`;
+        }
+
+        function montarMapaCasa(house, estado) {
+            if (mapaCasa) { mapaCasa.remove(); mapaCasa = null; }
+            const el = document.getElementById('mapa-casa');
+            if (!el || !house.geo || typeof L === 'undefined') return;
+            mapaCasa = criarMapaBase(el, {
+                dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false,
+                boxZoom: false, keyboard: false, tap: false, atribuicaoEmCima: true
+            });
+            mapaCasa.setView([house.geo.lat, house.geo.lng], 15);
+            L.marker([house.geo.lat, house.geo.lng], { icon: iconePino(house, estado || 'futura', { semNome: true }), interactive: false }).addTo(mapaCasa);
+            setTimeout(() => { if (mapaCasa) { mapaCasa.invalidateSize(); mapaCasa.setView([house.geo.lat, house.geo.lng], 15); } }, 60);
         }
 
         /* ===================================================================
@@ -2080,6 +2473,7 @@
                     </button>
                 </section>` : '';
 
+            if (mapaCasa) { mapaCasa.remove(); mapaCasa = null; }
             view.innerHTML = `
                 <div class="relative h-[460px]">
                     ${midiaHtml(house, 'absolute inset-0')}
@@ -2094,6 +2488,7 @@
                     <p class="t-sub flex items-center gap-2">${status}</p>
                     ${noiteHtml}
                     ${vibesHtml}
+                    ${comoChegarHtml(house)}
                     ${outrasHtml}
                     ${house.instagram ? `
                     <a href="https://instagram.com/${house.instagram.replace('@', '')}" target="_blank" rel="noopener" class="press group-list row">
@@ -2103,6 +2498,8 @@
                     </a>` : ''}
                 </div>
             `;
+
+            montarMapaCasa(house, proxima && proxima.estado);
 
             // Ação principal fixa no rodapé
             const cta = document.getElementById('casa-cta');
