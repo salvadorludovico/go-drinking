@@ -195,6 +195,7 @@
         .pino-envelope { position: relative; width: 44px; height: 44px; }
         .pino-envelope.sel .pino { transform: scale(1.18); }
         .pino-envelope.apagado { opacity: 0.5; }
+        .pino-grupo { box-shadow: 4px -4px 0 -1px var(--fill-2), 4px -4px 0 1px var(--anel, #636366), 0 4px 14px rgba(0,0,0,0.6); overflow: visible; }
         .pino-nome { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 600; color: #ffffff; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
         .pino-min { position: absolute; top: -8px; left: 30px; white-space: nowrap; font-size: 11px; font-weight: 700; line-height: 18px; padding: 0 6px; border-radius: 9px; background: #ffffff; color: #000000; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
         /* Rota: trilho discreto na cor do bar que se desenha da origem até a casa,
@@ -936,7 +937,7 @@
             {
                 id: "point",
                 endereco: "Rua 8, nº 510, Setor Central, Goiânia",
-                geo: { lat: -16.6758, lng: -49.2589, aproximado: false },
+                geo: { lat: -16.6745, lng: -49.2593, aproximado: true }, // nº 510 interpolado no traçado da Rua 8 (OSM)
                 nome: "POINT GOIÂNIA",
                 categoria: "boate",
                 especialidade: "Funk, Baile, Eventos Especiais",
@@ -1133,7 +1134,7 @@
             {
                 id: "mariagarrafinhas",
                 endereco: "Rua 8, nº 349, Setor Central, Goiânia",
-                geo: { lat: -16.6757, lng: -49.2590, aproximado: false },
+                geo: { lat: -16.6759, lng: -49.2589, aproximado: true }, // nº 349 interpolado no traçado da Rua 8 (OSM)
                 nome: "MARIA GARRAFINHAS",
                 categoria: "bar",
                 especialidade: "Boteco, Drinks, DJs",
@@ -2553,6 +2554,7 @@
                 camadaPinos = L.layerGroup().addTo(mapaAgenda);
                 camadaRota = L.layerGroup().addTo(mapaAgenda);
                 mapaAgenda.on('click', () => { pinoSelecionado = null; desenharPinos(); esconderCartaoMapa(); limparRota(); });
+                mapaAgenda.on('zoomend', desenharPinos);   // bolhas e nomes dependem da distância na tela
             }
             const { fixas, itinerantes } = itensDoMapa(dias, ref);
             itensMapaAtual = fixas;
@@ -2575,22 +2577,145 @@
             else buscarTemposReais();
         }
 
+        // Pinos que se encostam na tela viram uma bolha ("Rua 8 · 3"), refeita a
+        // cada zoom. O pino selecionado nunca entra em bolha. Nome que colidiria
+        // com outro pino ou nome some; o selecionado sempre mostra o seu.
+        const RAIO_GRUPO = 56;   // 44 do pino + 4 da pilha da bolha + folga
+
+        function agruparPinos(itens) {
+            const peso = i => i.house.id === pinoSelecionado ? 0 : i.estado === 'agora' ? 1 : i.estado === 'futura' ? 2 : 3;
+            const ordenados = itens.slice().sort((a, b) => peso(a) - peso(b));
+            if (!mapaAgenda._loaded) return ordenados.map(i => ({ itens: [i], p: null }));
+            const grupos = [];
+            ordenados.forEach(item => {
+                const p = mapaAgenda.latLngToContainerPoint([item.house.geo.lat, item.house.geo.lng]);
+                const livre = item.house.id === pinoSelecionado;
+                const g = !livre && grupos.find(g => !g.livre && g.p.distanceTo(p) < RAIO_GRUPO);
+                if (g) g.itens.push(item);
+                else grupos.push({ itens: [item], p, livre });
+            });
+            // A bolha fica no centro do grupo; dois centros ainda podem se encostar. Junta até não sobrar sobreposição.
+            const centrar = g => {
+                const pts = g.itens.map(i => mapaAgenda.latLngToContainerPoint([i.house.geo.lat, i.house.geo.lng]));
+                g.p = L.point(pts.reduce((s, q) => s + q.x, 0) / pts.length, pts.reduce((s, q) => s + q.y, 0) / pts.length);
+            };
+            grupos.forEach(centrar);
+            for (let juntou = true; juntou;) {
+                juntou = false;
+                for (let i = 0; i < grupos.length && !juntou; i++) {
+                    for (let j = i + 1; j < grupos.length && !juntou; j++) {
+                        if (grupos[i].livre || grupos[j].livre || grupos[i].p.distanceTo(grupos[j].p) >= RAIO_GRUPO) continue;
+                        grupos[i].itens.push(...grupos.splice(j, 1)[0].itens);
+                        centrar(grupos[i]);
+                        juntou = true;
+                    }
+                }
+            }
+            return grupos;
+        }
+
+        function rotuloGrupo(itens) {
+            const comum = f => { const v = f(itens[0].house); return v && itens.every(i => f(i.house) === v) ? v : null; };
+            return comum(h => (h.endereco || '').split(',')[0]) || comum(h => h.setor) || 'Casas';
+        }
+
+        let reguaTexto = null;
+        function larguraTexto(txt) {
+            if (!reguaTexto) {
+                reguaTexto = document.createElement('canvas').getContext('2d');
+                reguaTexto.font = `600 11px ${getComputedStyle(mapaAgenda.getContainer()).fontFamily}`;
+            }
+            return reguaTexto.measureText(txt).width;
+        }
+
+        // Decide quais grupos mostram o nome, em ordem de prioridade.
+        function nomesQueCabem(grupos, rotulos) {
+            if (!mapaAgenda._loaded) return grupos.map(() => true);
+            const caixa = (x, y, w, h) => ({ x0: x, y0: y, x1: x + w, y1: y + h });
+            const bate = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+            const pinos = grupos.map(g => caixa(g.p.x - 22, g.p.y - 22, 44, 44));
+            const aceitos = [];
+            return grupos.map((g, i) => {
+                const w = larguraTexto(rotulos[i]);
+                const nome = caixa(g.p.x - w / 2, g.p.y + 26, w, 14);
+                const livre = g.livre || (!pinos.some((p, j) => j !== i && bate(p, nome)) && !aceitos.some(a => bate(a, nome)));
+                if (livre) aceitos.push(nome);
+                return livre;
+            });
+        }
+
+        function iconeGrupo(itens, rotulo, opts) {
+            const estado = ['agora', 'futura'].find(e => itens.some(i => i.estado === e)) || null;
+            const mins = itens.map(i => (trajeto(i.house) || {}).min).filter(Boolean);
+            return L.divIcon({
+                className: '',
+                iconSize: [44, 44],
+                iconAnchor: [22, 22],
+                html: `
+                    <span class="pino-envelope ${estado ? '' : 'apagado'}">
+                        <span class="pino pino-grupo" style="--anel: ${anelDoEstado(estado)}">
+                            <span class="pino-ini">${itens.length}</span>
+                        </span>
+                        ${mins.length ? `<span class="pino-min">${Math.min(...mins)} min</span>` : ''}
+                        ${opts.semNome ? '' : `<span class="pino-nome">${escHtml(rotulo)}</span>`}
+                    </span>`
+            });
+        }
+
+        function selecionarPino(house) {
+            pinoSelecionado = house.id;
+            desenharPinos();
+            mostrarCartaoMapa(house.id);
+            if (!desenharRota(house, true)) mapaAgenda.panTo([house.geo.lat, house.geo.lng], { animate: true });
+        }
+
+        // Toque na bolha: aproxima até os pinos se separarem. Se nem o zoom
+        // máximo separa (mesmo prédio, mesma quadra), lista as casas.
+        function abrirGrupo(itens, rotulo) {
+            const pts = itens.map(i => mapaAgenda.latLngToContainerPoint([i.house.geo.lat, i.house.geo.lng]));
+            let menor = Infinity;
+            pts.forEach((a, i) => pts.slice(i + 1).forEach(b => { menor = Math.min(menor, a.distanceTo(b)); }));
+            const alvo = Math.ceil(mapaAgenda.getZoom() + Math.log2((RAIO_GRUPO + 8) / Math.max(menor, 0.01)));
+            if (alvo <= Math.min(mapaAgenda.getMaxZoom(), 18)) {
+                mapaAgenda.flyTo(L.latLngBounds(itens.map(i => [i.house.geo.lat, i.house.geo.lng])).getCenter(), alvo);
+                return;
+            }
+            escolher({ titulo: rotulo, opcoes: itens.map(i => ({ valor: i.house.id, rotulo: nomeCasa(i.house) })) })
+                .then(id => { const item = id && itens.find(i => i.house.id === id); if (item) selecionarPino(item.house); });
+        }
+
         function desenharPinos() {
             camadaPinos.clearLayers();
-            itensMapaAtual.forEach(item => {
+            const grupos = agruparPinos(itensMapaAtual);
+            // Duas bolhas com o mesmo nome ("Setor Sul · 2" e "Setor Sul · 2") não ajudam: aí cada uma leva o nome da casa principal.
+            const bases = grupos.map(g => g.itens.length > 1 ? rotuloGrupo(g.itens) : null);
+            const rotulos = grupos.map((g, i) => {
+                if (!bases[i]) return nomeCasa(g.itens[0].house);
+                const repetido = bases.filter(b => b === bases[i]).length > 1;
+                return repetido ? `${nomeCasa(g.itens[0].house)} +${g.itens.length - 1}` : `${bases[i]} · ${g.itens.length}`;
+            });
+            const comNome = nomesQueCabem(grupos, rotulos);
+            grupos.forEach((g, i) => {
+                const semNome = !comNome[i];
+                if (g.itens.length > 1) {
+                    const centro = g.p ? mapaAgenda.containerPointToLatLng(g.p) : L.latLngBounds(g.itens.map(x => [x.house.geo.lat, x.house.geo.lng])).getCenter();
+                    const m = L.marker(centro, {
+                        icon: iconeGrupo(g.itens, rotulos[i], { semNome }),
+                        zIndexOffset: g.itens.some(x => x.estado === 'agora') ? 500 : 0,
+                        keyboard: true, title: `${rotulos[i]}: ${g.itens.map(x => nomeCasa(x.house)).join(', ')}`
+                    });
+                    m.on('click', e => { L.DomEvent.stopPropagation(e); abrirGrupo(g.itens, rotuloGrupo(g.itens)); });
+                    camadaPinos.addLayer(m);
+                    return;
+                }
+                const item = g.itens[0];
                 const sel = pinoSelecionado === item.house.id;
                 const m = L.marker([item.house.geo.lat, item.house.geo.lng], {
-                    icon: iconePino(item.house, item.estado, { selecionado: sel, minutos: (trajeto(item.house) || {}).min }),
+                    icon: iconePino(item.house, item.estado, { selecionado: sel, minutos: (trajeto(item.house) || {}).min, semNome }),
                     zIndexOffset: sel ? 1000 : (item.estado === 'agora' ? 500 : 0),
                     keyboard: true, title: nomeCasa(item.house)
                 });
-                m.on('click', e => {
-                    L.DomEvent.stopPropagation(e);
-                    pinoSelecionado = item.house.id;
-                    desenharPinos();
-                    mostrarCartaoMapa(item.house.id);
-                    if (!desenharRota(item.house, true)) mapaAgenda.panTo([item.house.geo.lat, item.house.geo.lng], { animate: true });
-                });
+                m.on('click', e => { L.DomEvent.stopPropagation(e); selecionarPino(item.house); });
                 camadaPinos.addLayer(m);
             });
         }
