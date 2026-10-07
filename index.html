@@ -186,6 +186,18 @@
         .pino-envelope.sel .pino { transform: scale(1.18); }
         .pino-envelope.apagado { opacity: 0.5; }
         .pino-nome { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 600; color: #ffffff; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+        .pino-min { position: absolute; top: -8px; left: 30px; white-space: nowrap; font-size: 11px; font-weight: 700; line-height: 18px; padding: 0 6px; border-radius: 9px; background: #ffffff; color: #000000; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+        /* Rota: trilho discreto na cor do bar que se desenha da origem até a casa,
+           e uma onda de luz (gradiente animado em JS) que varre o trajeto. */
+        .rota-trilho { stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: rota-desenhar 0.8s cubic-bezier(.2,.8,.2,1) forwards; }
+        .rota-onda { stroke-linecap: round; }
+        .rota-onda.halo { filter: blur(9px); }
+        .rota-onda:not(.halo) { filter: drop-shadow(0 0 3px rgba(255,255,255,0.25)); }
+        @keyframes rota-desenhar { to { stroke-dashoffset: 0; } }
+        .selo { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; flex-shrink: 0; }
+        .selo.aberto { color: var(--live); background: rgba(48, 209, 88, 0.16); }
+        .selo.aberto .dot { width: 6px; height: 6px; }
+        .selo.fechado { color: var(--danger); background: rgba(255, 69, 58, 0.16); }
         .eu-ponto { width: 18px; height: 18px; border-radius: 9px; background: #0a84ff; border: 3px solid #ffffff; box-shadow: 0 0 0 8px rgba(10,132,255,0.25); }
         .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 20px); }
 
@@ -1919,7 +1931,8 @@
             document.getElementById('agenda-mapa').classList.toggle('hidden', !noMapa);
 
             if (noMapa) atualizarMapaAgenda(dias, ref);
-            else view.innerHTML = dias.map(d => blocoDiaHtml(d, ref, !unico)).join('');
+            else { limparRota(); }
+            if (!noMapa) view.innerHTML = dias.map(d => blocoDiaHtml(d, ref, !unico)).join('');
             lucide.createIcons();
         }
 
@@ -1940,7 +1953,11 @@
         let minhaPosicao = null;              // { lat, lng }
         let origemTipo = 'desconhecida';      // desconhecida | pedindo | real | demo
         let origemMotivo = '';
-        let agendaModo = 'lista';             // lista | mapa
+        const CHAVE_MODO_AGENDA = 'godrinking.agendaModo';
+        let agendaModo = (() => {             // lista | mapa — lembra a última escolha neste navegador
+            try { return localStorage.getItem(CHAVE_MODO_AGENDA) === 'mapa' ? 'mapa' : 'lista'; } catch (e) { return 'lista'; }
+        })();
+        let camadaRota = null;
         let mapaAgenda = null, camadaPinos = null, marcadorEu = null;
         let mapaCasa = null;
         let pinoSelecionado = null;
@@ -2020,9 +2037,12 @@
         function aoMudarOrigem() {
             if (currentTab === 'agenda' && agendaModo === 'mapa') {
                 desenharEu();
+                desenharPinos();
                 desenharRodapeMapa();
                 if (pinoSelecionado) mostrarCartaoMapa(pinoSelecionado);
-                if (origemTipo === 'real') centralizarMapaAgenda();
+                const casaSel = pinoSelecionado && housesData.find(h => h.id === pinoSelecionado);
+                if (casaSel) desenharRota(casaSel, true);
+                else if (origemTipo === 'real') centralizarMapaAgenda();
             }
             const alvo = document.getElementById('casa-distancia');
             if (alvo && currentTab === 'casa') alvo.innerHTML = distanciaCasaHtml(housesData.find(h => h.id === activeHouseId));
@@ -2049,6 +2069,7 @@
                             <span class="pino-ini">${escHtml(nomeCasa(house).charAt(0))}</span>
                             <img src="logo-casas/${house.id}.jpg" alt="" onerror="this.remove()">
                         </span>
+                        ${opts.minutos ? `<span class="pino-min">${opts.minutos} min</span>` : ''}
                         ${opts.semNome ? '' : `<span class="pino-nome">${escHtml(nomeCasa(house))}</span>`}
                     </span>`
             });
@@ -2068,6 +2089,7 @@
 
         function setAgendaModo(modo) {
             agendaModo = modo;
+            try { localStorage.setItem(CHAVE_MODO_AGENDA, modo); } catch (e) { /* navegação privada: só não lembra */ }
             pinoSelecionado = null;
             renderAgenda();
             window.scrollTo(0, 0);
@@ -2095,7 +2117,8 @@
             if (primeiraVez) {
                 mapaAgenda = criarMapaBase('mapa-agenda');
                 camadaPinos = L.layerGroup().addTo(mapaAgenda);
-                mapaAgenda.on('click', () => { pinoSelecionado = null; desenharPinos(); esconderCartaoMapa(); });
+                camadaRota = L.layerGroup().addTo(mapaAgenda);
+                mapaAgenda.on('click', () => { pinoSelecionado = null; desenharPinos(); esconderCartaoMapa(); limparRota(); });
             }
             const { fixas, itinerantes } = itensDoMapa(dias, ref);
             itensMapaAtual = fixas;
@@ -2104,6 +2127,8 @@
             desenharEu();
             desenharRodapeMapa();
             if (pinoSelecionado) mostrarCartaoMapa(pinoSelecionado); else esconderCartaoMapa();
+            const casaSel = pinoSelecionado && housesData.find(h => h.id === pinoSelecionado);
+            if (casaSel) desenharRota(casaSel, false); else limparRota();
 
             // O contêiner acabou de aparecer: o Leaflet precisa medir de novo antes de
             // enquadrar. Enquadrar com tamanho zero abre o mapa no zoom mínimo.
@@ -2120,7 +2145,7 @@
             itensMapaAtual.forEach(item => {
                 const sel = pinoSelecionado === item.house.id;
                 const m = L.marker([item.house.geo.lat, item.house.geo.lng], {
-                    icon: iconePino(item.house, item.estado, { selecionado: sel }),
+                    icon: iconePino(item.house, item.estado, { selecionado: sel, minutos: (trajeto(item.house) || {}).min }),
                     zIndexOffset: sel ? 1000 : (item.estado === 'agora' ? 500 : 0),
                     keyboard: true, title: nomeCasa(item.house)
                 });
@@ -2129,10 +2154,131 @@
                     pinoSelecionado = item.house.id;
                     desenharPinos();
                     mostrarCartaoMapa(item.house.id);
-                    mapaAgenda.panTo([item.house.geo.lat, item.house.geo.lng], { animate: true });
+                    if (!desenharRota(item.house, true)) mapaAgenda.panTo([item.house.geo.lat, item.house.geo.lng], { animate: true });
                 });
                 camadaPinos.addLayer(m);
             });
+        }
+
+        // Linha ilustrativa (não é o trajeto real pelas ruas): uma curva suave da
+        // origem até a casa, tracejada e "andando" em direção ao bar.
+        function desenharRota(house, enquadrar) {
+            if (!camadaRota) return false;
+            limparRota();
+            const o = origemAtual();
+            if (!o || !house.geo) return false;
+            const a = [o.lat, o.lng], b = [house.geo.lat, house.geo.lng];
+            const meio = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+            const dx = b[1] - a[1], dy = b[0] - a[0];
+            const ctrl = [meio[0] - dx * 0.25, meio[1] + dy * 0.25]; // empurra o meio para o lado: vira arco
+            const pontos = [];
+            for (let i = 0; i <= 32; i++) {
+                const t = i / 32, u = 1 - t;
+                pontos.push([u * u * a[0] + 2 * u * t * ctrl[0] + t * t * b[0], u * u * a[1] + 2 * u * t * ctrl[1] + t * t * b[1]]);
+            }
+            const cor = (house.theme && house.theme.primary) || '#ff9f0a';
+            const camada = (estilo) => {
+                const linha = L.polyline(pontos, Object.assign({ interactive: false, lineCap: 'round' }, estilo)).addTo(camadaRota);
+                const el = linha.getElement();
+                if (el) el.setAttribute('pathLength', '100');
+                return el;
+            };
+            const halo = camada({ color: cor, weight: 20, opacity: 0.7, className: 'rota-onda halo rota-trilho' });
+            const nucleo = camada({ color: cor, weight: 4.5, opacity: 1, className: 'rota-onda rota-trilho' });
+            animarOnda(a, b, cor, nucleo, halo);
+            if (enquadrar) mapaAgenda.fitBounds([a, b], { paddingTopLeft: [56, 56], paddingBottomRight: [56, 230], maxZoom: 15 });
+            return true;
+        }
+
+        // Estilo "AI Mode": a linha inteira é um gradiente da cor do bar, que flui sem parar da origem para a casa. O halo usa o
+        // mesmo gradiente, desfocado, e respira. spreadMethod=reflect evita emenda.
+        let ondaRaf = null;
+        let ondaZoomHandler = null;
+
+        function limparRota() {
+            if (ondaRaf) cancelAnimationFrame(ondaRaf);
+            ondaRaf = null;
+            if (ondaZoomHandler && mapaAgenda) mapaAgenda.off('zoomend', ondaZoomHandler);
+            ondaZoomHandler = null;
+            if (camadaRota) camadaRota.clearLayers();
+        }
+
+        function hexParaHsl(hex) {
+            const n = parseInt(hex.replace('#', ''), 16);
+            const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+            if (max === min) return { h: 0, s: 0, l };
+            const d = max - min;
+            const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+            return { h: h * 60, s, l };
+        }
+
+        // Uma cor só: a do bar. O que corre pela linha é a claridade dela,
+        // do tom mais fundo até um brilho quase branco da mesma cor.
+        function paletaEnergia(cor) {
+            const { h, s } = hexParaHsl(cor);
+            const sat = Math.round(Math.max(s, 0.75) * 100);
+            const tom = l => `hsl(${Math.round(h)}, ${sat}%, ${l}%)`;
+            return [tom(38), tom(50), tom(62), tom(78), tom(62)];
+        }
+
+        function animarOnda(a, b, cor, nucleo, halo) {
+            const svg = nucleo && nucleo.ownerSVGElement;
+            if (!svg) return;
+            const NS = 'http://www.w3.org/2000/svg';
+            let defs = svg.querySelector('defs');
+            if (!defs) { defs = document.createElementNS(NS, 'defs'); svg.insertBefore(defs, svg.firstChild); }
+            const antigo = svg.querySelector('#onda-rota');
+            if (antigo) antigo.remove();
+            const grad = document.createElementNS(NS, 'linearGradient');
+            grad.id = 'onda-rota';
+            grad.setAttribute('gradientUnits', 'userSpaceOnUse');
+            grad.setAttribute('spreadMethod', 'reflect');
+            const cores = paletaEnergia(cor);
+            cores.forEach((c, i) => {
+                const st = document.createElementNS(NS, 'stop');
+                st.setAttribute('offset', i / (cores.length - 1));
+                st.setAttribute('stop-color', c);
+                grad.appendChild(st);
+            });
+            defs.appendChild(grad);
+            [nucleo, halo].forEach(el => el && el.setAttribute('stroke', 'url(#onda-rota)'));
+
+            // Um período do gradiente cobre 45% do trajeto; ele desliza na direção do bar.
+            let pa, dir, periodo;
+            const posicionar = () => {
+                pa = mapaAgenda.latLngToLayerPoint(a);
+                const pb = mapaAgenda.latLngToLayerPoint(b);
+                const dx = pb.x - pa.x, dy = pb.y - pa.y;
+                const comp = Math.max(1, Math.hypot(dx, dy));
+                dir = { x: dx / comp, y: dy / comp };
+                periodo = comp * 0.45;
+                grad.setAttribute('x1', pa.x); grad.setAttribute('y1', pa.y);
+                grad.setAttribute('x2', pa.x + dir.x * periodo); grad.setAttribute('y2', pa.y + dir.y * periodo);
+            };
+            posicionar();
+            ondaZoomHandler = posicionar;
+            mapaAgenda.on('zoomend', ondaZoomHandler);
+
+            if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            const VOLTA = 3200;  // ms para o gradiente andar um ciclo completo (2 períodos com reflect)
+            const RESPIRO = 2800;
+            const quadro = agora => {
+                const fase = (agora % VOLTA) / VOLTA;
+                const passo = fase * periodo * 2;
+                grad.setAttribute('gradientTransform', `translate(${dir.x * passo} ${dir.y * passo})`);
+                if (halo) halo.style.opacity = (0.45 + 0.3 * (0.5 + 0.5 * Math.sin(agora / RESPIRO * Math.PI * 2))).toFixed(3);
+                ondaRaf = requestAnimationFrame(quadro);
+            };
+            ondaRaf = requestAnimationFrame(quadro);
+        }
+
+        function clarear(hex, quanto) {
+            const n = parseInt(hex.replace('#', ''), 16);
+            const canal = d => Math.round(((n >> d) & 255) + (255 - ((n >> d) & 255)) * quanto);
+            return `rgb(${canal(16)}, ${canal(8)}, ${canal(0)})`;
         }
 
         function desenharEu() {
@@ -2183,15 +2329,17 @@
             const t = trajeto(house);
 
             let status = '', noite = '', entrada = '';
+            const selo = (txt, classe) => `<span class="selo ${classe}">${txt}</span>`;
             if (prog) {
                 status = estado === 'agora'
-                    ? `<span class="c-live font-semibold flex items-center gap-1.5"><span class="dot pulse"></span>Agora</span>`
-                    : estado === 'encerrada' ? '<span class="c-2">Encerrada</span>'
-                    : `<span class="c-accent font-semibold">${diaRelativo(occ.inicio, ref)} · ${fmtHora(occ.inicio)}</span>`;
+                    ? `${selo('<span class="dot pulse"></span>Aberto', 'aberto')}<span class="c-2">até ${fmtHora(occ.fim)}</span>`
+                    : estado === 'encerrada'
+                    ? `${selo('Fechado', 'fechado')}<span class="c-2">encerrou às ${fmtHora(occ.fim)}</span>`
+                    : `${selo('Fechado', 'fechado')}<span class="c-2">abre ${diaRelativo(occ.inicio, ref).toLowerCase()} às ${fmtHora(occ.inicio)}</span>`;
                 noite = `${nomeNoite(prog)} · ${fmtHora(occ.inicio)} – ${fmtHora(occ.fim)}`;
                 entrada = infoEntrada(prog, occ, ref).principal;
             } else {
-                status = '<span class="c-2">Sem programação nestes dias</span>';
+                status = `${selo('Fechado', 'fechado')}<span class="c-2">sem programação nestes dias</span>`;
             }
 
             c.innerHTML = `
@@ -2281,6 +2429,7 @@
         const TITULO_COMPACTO = { hoje: 'Hoje', agenda: 'Agenda', ingressos: 'Ingressos', freelas: 'Trabalhe na noite', gerente: 'Painel da casa' };
 
         function mostrarView(nome) {
+            if (nome !== 'agenda' && typeof limparRota === 'function') limparRota(); // a animação da rota não roda escondida
             Object.entries(VIEWS).forEach(([k, id]) => {
                 document.getElementById(id).classList.toggle('hidden', k !== nome);
             });
