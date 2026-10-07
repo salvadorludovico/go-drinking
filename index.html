@@ -1975,9 +1975,43 @@
         }
 
         // "2,4 km · ~7 min de carro". null se ainda não sabemos de onde o cliente sai.
+        // Rotas pelas ruas, buscadas no OSRM (servidor público de demonstração do
+        // OpenStreetMap, sem chave) quando o cliente toca num pino. Bom para o
+        // protótipo; no produto, trocar por um serviço com contrato.
+        const rotasReais = {};
+        const chaveRota = (o, house) => `${o.lat.toFixed(4)},${o.lng.toFixed(4)}|${house.id}`;
+
+        function buscarRotaReal(house) {
+            const o = origemAtual();
+            const chave = chaveRota(o, house);
+            if (rotasReais[chave]) return Promise.resolve(rotasReais[chave]);
+            const url = `https://router.project-osrm.org/route/v1/driving/${o.lng},${o.lat};${house.geo.lng},${house.geo.lat}?overview=full&geometries=geojson`;
+            const ctrl = new AbortController();
+            const prazo = setTimeout(() => ctrl.abort(), 6000);
+            return fetch(url, { signal: ctrl.signal })
+                .then(r => r.json())
+                .then(d => {
+                    const r = d && d.code === 'Ok' && d.routes && d.routes[0];
+                    if (!r) throw new Error('sem rota');
+                    const rota = {
+                        pontos: r.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+                        km: r.distance / 1000,
+                        min: Math.max(1, Math.ceil(r.duration / 60) + 1) // +1 para estacionar ou descer do carro
+                    };
+                    rotasReais[chave] = rota;
+                    return rota;
+                })
+                .finally(() => clearTimeout(prazo));
+        }
+
         function trajeto(house) {
             const o = origemAtual();
             if (!o || !house.geo) return null;
+            const real = rotasReais[chaveRota(o, house)];
+            if (real) {
+                const kmTxt = real.km < 1 ? `${Math.round(real.km * 1000 / 50) * 50} m` : `${real.km.toFixed(1).replace('.', ',')} km`;
+                return { km: real.km, min: real.min, texto: `${kmTxt} · ${real.min} min de carro` };
+            }
             const km = distanciaKm(o, house.geo) * FATOR_RUA;
             const min = Math.max(3, Math.round(km / VELOCIDADE_NOITE_KMH * 60) + 2);
             const kmTxt = km < 1 ? `${Math.round(km * 1000 / 50) * 50} m` : `${km.toFixed(1).replace('.', ',')} km`;
@@ -2162,23 +2196,50 @@
 
         // Linha ilustrativa (não é o trajeto real pelas ruas): uma curva suave da
         // origem até a casa, tracejada e "andando" em direção ao bar.
+        let rotaPedido = 0;
+
         function desenharRota(house, enquadrar) {
             if (!camadaRota) return false;
             limparRota();
             const o = origemAtual();
             if (!o || !house.geo) return false;
             const a = [o.lat, o.lng], b = [house.geo.lat, house.geo.lng];
+            const pedido = ++rotaPedido;
+            const aindaVale = () => pedido === rotaPedido && pinoSelecionado === house.id && currentTab === 'agenda' && agendaModo === 'mapa';
+
+            const tinhaReal = !!rotasReais[chaveRota(o, house)];
+            buscarRotaReal(house)
+                .then(rota => {
+                    if (!aindaVale()) return;
+                    tracarLinha(house, a, b, rota.pontos, enquadrar);
+                    if (!tinhaReal) {             // minutos e distância reais no pino e no cartão
+                        desenharPinos();
+                        mostrarCartaoMapa(house.id);
+                    }
+                })
+                .catch(() => { if (aindaVale()) tracarLinha(house, a, b, arco(a, b), enquadrar); });
+            if (enquadrar) mapaAgenda.fitBounds([a, b], { paddingTopLeft: [56, 56], paddingBottomRight: [56, 230], maxZoom: 15 });
+            return true;
+        }
+
+        // Plano B sem internet para o serviço de rotas: curva suave da origem até a casa.
+        function arco(a, b) {
             const meio = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
             const dx = b[1] - a[1], dy = b[0] - a[0];
-            const ctrl = [meio[0] - dx * 0.25, meio[1] + dy * 0.25]; // empurra o meio para o lado: vira arco
+            const ctrl = [meio[0] - dx * 0.25, meio[1] + dy * 0.25];
             const pontos = [];
             for (let i = 0; i <= 32; i++) {
                 const t = i / 32, u = 1 - t;
                 pontos.push([u * u * a[0] + 2 * u * t * ctrl[0] + t * t * b[0], u * u * a[1] + 2 * u * t * ctrl[1] + t * t * b[1]]);
             }
+            return pontos;
+        }
+
+        function tracarLinha(house, a, b, pontos, enquadrar) {
+            limparRota();
             const cor = (house.theme && house.theme.primary) || '#ff9f0a';
             const camada = (estilo) => {
-                const linha = L.polyline(pontos, Object.assign({ interactive: false, lineCap: 'round' }, estilo)).addTo(camadaRota);
+                const linha = L.polyline(pontos, Object.assign({ interactive: false, lineCap: 'round', lineJoin: 'round' }, estilo)).addTo(camadaRota);
                 const el = linha.getElement();
                 if (el) el.setAttribute('pathLength', '100');
                 return el;
@@ -2186,8 +2247,7 @@
             const halo = camada({ color: cor, weight: 20, opacity: 0.7, className: 'rota-onda halo rota-trilho' });
             const nucleo = camada({ color: cor, weight: 4.5, opacity: 1, className: 'rota-onda rota-trilho' });
             animarOnda(a, b, cor, nucleo, halo);
-            if (enquadrar) mapaAgenda.fitBounds([a, b], { paddingTopLeft: [56, 56], paddingBottomRight: [56, 230], maxZoom: 15 });
-            return true;
+            if (enquadrar) mapaAgenda.fitBounds(pontos, { paddingTopLeft: [56, 56], paddingBottomRight: [56, 230], maxZoom: 16 });
         }
 
         // Estilo "AI Mode": a linha inteira é um gradiente da cor do bar, que flui sem parar da origem para a casa. O halo usa o
