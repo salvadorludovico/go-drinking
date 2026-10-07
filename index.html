@@ -31,6 +31,9 @@
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- QR de verdade: o ingresso gera, a portaria lê com a câmera -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
     <script>
         tailwind.config = {
@@ -436,6 +439,26 @@
             </button>
         </nav>
 
+        <!-- BARRA DE ABAS DO MODO GERENTE: a portaria no lugar do cliente -->
+        <nav id="tabbar-gerente" aria-label="Navegação do painel da casa" class="bar-bottom fixed bottom-0 inset-x-0 max-w-md mx-auto z-50 flex safe-bottom hidden">
+            <button onclick="openManagerDashboard('painel')" id="nav-g-painel" class="tab-btn">
+                <i data-lucide="layout-dashboard" class="w-[26px] h-[26px]" stroke-width="1.8"></i>
+                <span class="rotulo">Painel</span>
+            </button>
+            <button onclick="openManagerDashboard('lista')" id="nav-g-lista" class="tab-btn">
+                <i data-lucide="list-checks" class="w-[26px] h-[26px]" stroke-width="1.8"></i>
+                <span class="rotulo">Lista</span>
+            </button>
+            <button onclick="openManagerDashboard('qr')" id="nav-g-qr" class="tab-btn">
+                <i data-lucide="scan-line" class="w-[26px] h-[26px]" stroke-width="1.8"></i>
+                <span class="rotulo">Ler QR</span>
+            </button>
+            <button onclick="openManagerDashboard('equipe')" id="nav-g-equipe" class="tab-btn">
+                <i data-lucide="users" class="w-[26px] h-[26px]" stroke-width="1.8"></i>
+                <span class="rotulo">Equipe</span>
+            </button>
+        </nav>
+
         <!-- ENTRAR NA LISTA / RESERVAR (painel que sobe do rodapé) -->
         <div id="reservation-modal" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true" aria-labelledby="modal-event-title">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeReservationModal()"></div>
@@ -548,22 +571,7 @@
                                     <i data-lucide="chevrons-up-down" class="w-4 h-4 shrink-0"></i>
                                 </span>
                             </button>
-                            <label class="row justify-between">
-                                <span class="t-body shrink-0">Dia simulado</span>
-                                <select id="menu-dia" class="bare t-body c-2 text-right flex-1 cursor-pointer" style="text-align-last: right;"></select>
-                            </label>
-                            <label class="row justify-between">
-                                <span class="t-body shrink-0">Hora simulada</span>
-                                <input type="time" id="menu-hora" class="bare t-body c-2 text-right">
-                            </label>
-                            <button onclick="aplicarRelogioDoMenu()" class="press row">
-                                <span class="t-body c-accent">Aplicar horário</span>
-                            </button>
-                            <button id="menu-tempo-real" onclick="voltarTempoReal()" class="press row">
-                                <span class="t-body c-accent">Voltar ao tempo real</span>
-                            </button>
                         </div>
-                        <p id="menu-relogio-status" class="t-foot c-3 px-4"></p>
                     </div>
                 </div>
             </div>
@@ -995,13 +1003,8 @@
         const DIAS_CURTO = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
         const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
-        // Deslocamento do relogio para a demo. Guardamos offset (e nao uma data
-        // fixa) para o tempo continuar correndo: as contagens regressivas se
-        // movem na frente do cliente durante a apresentacao.
-        let clockOffsetMs = 0;
-
         function agora() {
-            return new Date(Date.now() + clockOffsetMs);
+            return new Date();
         }
 
         function minutosDe(hhmm) {
@@ -1171,36 +1174,6 @@
                 .sort((a, b) => a.inicio - b.inicio);
         }
 
-        // --- Relogio de demonstracao ---
-
-        function aplicarSimulacao(diaSemana, hhmm) {
-            const real = new Date();
-            const alvo = new Date(real.getFullYear(), real.getMonth(), real.getDate(), ...hhmm.split(':').map(Number));
-            let delta = (diaSemana - alvo.getDay() + 7) % 7;
-            alvo.setDate(alvo.getDate() + delta);
-            clockOffsetMs = alvo - real;
-            redesenharTudo();
-        }
-
-        function limparSimulacao() {
-            clockOffsetMs = 0;
-            redesenharTudo();
-        }
-
-        function simulacaoAtiva() {
-            return Math.abs(clockOffsetMs) > 60000;
-        }
-
-        function lerSimulacaoDaUrl() {
-            const p = new URLSearchParams(location.search);
-            const dia = p.get('dia'), hora = p.get('hora');
-            if (!hora) return;
-            // "sab" e "sáb" valem igual: o link é digitado à mão, sem acento
-            const semAcento = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
-            const idx = dia ? DIAS_CURTO.findIndex(d => semAcento(d) === semAcento(dia.slice(0, 3))) : new Date().getDay();
-            aplicarSimulacao(idx >= 0 ? idx : new Date().getDay(), hora);
-        }
-
         function redesenharTudo() {
             atualizarAvatar();
             if (currentTab === 'hoje') renderHoje();
@@ -1228,7 +1201,6 @@
 
         // Inicializar
         window.addEventListener('DOMContentLoaded', () => {
-            lerSimulacaoDaUrl();          // ?dia=sex&hora=22:30 para demonstrar a noite
             aplicarIdentidade('default');
             switchTab(ABA_INICIAL);
             updateReservasUI();
@@ -2631,6 +2603,8 @@
             document.getElementById('casa-topo').classList.toggle('hidden', nome !== 'casa');
             document.getElementById('casa-cta').classList.toggle('hidden', nome !== 'casa');
             document.getElementById('tabbar').classList.toggle('hidden', nome === 'casa' || nome === 'gerente');
+            document.getElementById('tabbar-gerente').classList.toggle('hidden', nome !== 'gerente');
+            if (nome !== 'gerente' && typeof pararCamera === 'function') pararCamera();
 
             const ativa = { hoje: 'hoje', freelas: 'hoje', agenda: 'agenda', vibes: 'vibes', ingressos: 'ingressos' }[nome];
             ['hoje', 'agenda', 'vibes', 'ingressos'].forEach(t => {
@@ -3056,34 +3030,41 @@
             return r.status === 'cancelada' || (occ && ref >= occ.fim);
         }
 
-        // QR ilustrativo e estável por reserva: mesmo id, mesmo desenho.
-        function qrSvg(semente) {
-            const n = 25;
-            let seed = 0;
-            for (const c of semente) seed = (seed * 31 + c.charCodeAt(0)) % 2147483647;
-            seed = seed || 1;
-            const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-            const ancoras = [[0, 0], [0, n - 7], [n - 7, 0]];
-            const fixo = (r, c) => {
-                for (const [R, C] of ancoras) {
-                    if (r >= R && r < R + 7 && c >= C && c < C + 7) {
-                        return Math.max(Math.abs(r - R - 3), Math.abs(c - C - 3)) === 2 ? 0 : 1;
-                    }
-                    if (r >= R - 1 && r <= R + 7 && c >= C - 1 && c <= C + 7) return 0;
-                }
-                if (r === 6) return c % 2 === 0 ? 1 : 0;
-                if (c === 6) return r % 2 === 0 ? 1 : 0;
-                return null;
+        // O QR carrega a reserva inteira, não só o id: o celular da portaria não
+        // tem o localStorage do cliente, então precisa ler nome, casa e noite do próprio código.
+        const PREFIXO_INGRESSO = 'GD1?';
+
+        function payloadIngresso(r) {
+            return PREFIXO_INGRESSO + new URLSearchParams({
+                id: r.id, h: r.houseId, e: r.eventId, d: r.eventDate || '', n: r.userName, g: r.guestsCount
+            }).toString();
+        }
+
+        function lerPayloadIngresso(texto) {
+            if (!texto || !texto.startsWith(PREFIXO_INGRESSO)) return null;
+            const p = new URLSearchParams(texto.slice(PREFIXO_INGRESSO.length));
+            if (!p.get('id') || !p.get('h')) return null;
+            return {
+                id: p.get('id'), houseId: p.get('h'), eventId: p.get('e'),
+                eventDate: p.get('d') || null, userName: p.get('n') || 'Sem nome',
+                guestsCount: parseInt(p.get('g'), 10) || 1
             };
+        }
+
+        function qrSvg(texto, tamanho) {
+            if (typeof qrcode === 'undefined') return ''; // sem rede: fica o código escrito abaixo
+            const qr = qrcode(0, 'L');
+            qr.addData(texto);
+            qr.make();
+            const n = qr.getModuleCount();
             let rects = '';
             for (let r = 0; r < n; r++) {
                 for (let c = 0; c < n; c++) {
-                    const f = fixo(r, c);
-                    const ligado = f === null ? rnd() > 0.52 : f === 1;
-                    if (ligado) rects += `<rect x="${c}" y="${r}" width="1" height="1"/>`;
+                    if (qr.isDark(r, c)) rects += `<rect x="${c}" y="${r}" width="1" height="1"/>`;
                 }
             }
-            return `<svg viewBox="0 0 ${n} ${n}" width="150" height="150" shape-rendering="crispEdges" role="img" aria-label="QR code da entrada"><rect width="${n}" height="${n}" fill="#fff"/><g fill="#000">${rects}</g></svg>`;
+            const t = tamanho || 180;
+            return `<svg viewBox="0 0 ${n} ${n}" width="${t}" height="${t}" shape-rendering="crispEdges" role="img" aria-label="QR code da entrada"><rect width="${n}" height="${n}" fill="#fff"/><g fill="#000">${rects}</g></svg>`;
         }
 
         function codigoPortaria(r) {
@@ -3143,7 +3124,7 @@
                     ${cancelada ? '<div class="h-4"></div>' : `
                     <div class="mt-4 border-t-[1.5px] border-dashed border-[#3a3a3c]"></div>
                     <div class="px-4 pt-5 pb-4 flex flex-col items-center gap-2.5">
-                        <div class="p-3 rounded-[14px] bg-white">${qrSvg(r.id)}</div>
+                        <div class="p-3 rounded-[14px] bg-white">${qrSvg(payloadIngresso(r))}</div>
                         <p class="t-foot c-2">Mostre na portaria · vale uma entrada</p>
                         <p class="mono t-foot c-3 tracking-widest">${codigoPortaria(r)}</p>
                     </div>`}
@@ -3278,7 +3259,6 @@
         }
 
         function renderMenu() {
-            const ref = agora();
             document.getElementById('menu-nome').innerText = USUARIO.nome;
             document.getElementById('menu-avatar').innerHTML = avatarConteudo();
             document.getElementById('toggle-gerente').checked = isManagerMode;
@@ -3286,30 +3266,7 @@
             const casa = housesData.find(h => h.id === identidadeId);
             document.getElementById('menu-identidade').innerText = casa ? nomeCasa(casa) : 'Geral';
 
-            const dia = document.getElementById('menu-dia');
-            dia.innerHTML = DIAS_TITULO.map((d, i) => `<option value="${i}">${d}</option>`).join('');
-            dia.value = String(ref.getDay());
-            document.getElementById('menu-hora').value = `${pad2(ref.getHours())}:${pad2(ref.getMinutes())}`;
-
-            document.getElementById('menu-tempo-real').classList.toggle('hidden', !simulacaoAtiva());
-            document.getElementById('menu-relogio-status').innerText = simulacaoAtiva()
-                ? `O app está simulando ${DIAS_TITULO[ref.getDay()].toLowerCase()}, ${pad2(ref.getHours())}:${pad2(ref.getMinutes())}.`
-                : 'O app está no horário real. Simule a noite para apresentar fora do horário.';
             lucide.createIcons();
-        }
-
-        function aplicarRelogioDoMenu() {
-            const dia = parseInt(document.getElementById('menu-dia').value, 10);
-            const hora = document.getElementById('menu-hora').value || '22:00';
-            aplicarSimulacao(dia, hora);
-            showSuccessToast(`Simulando ${DIAS_TITULO[dia].toLowerCase()}, ${hora}`);
-            renderMenu();
-        }
-
-        function voltarTempoReal() {
-            limparSimulacao();
-            showSuccessToast('Horário real');
-            renderMenu();
         }
 
         async function escolherIdentidade() {
@@ -3347,8 +3304,7 @@
         function atualizarAvatar() {
             const btn = document.getElementById('avatar-btn');
             if (!btn) return;
-            btn.innerHTML = `<span class="w-full h-full rounded-full overflow-hidden flex items-center justify-center">${avatarConteudo()}</span>` +
-                (simulacaoAtiva() ? `<span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-black" style="background: var(--accent);" title="Horário simulado"></span>` : '');
+            btn.innerHTML = `<span class="w-full h-full rounded-full overflow-hidden flex items-center justify-center">${avatarConteudo()}</span>`;
         }
 
         // --- MODO GERENTE (DASHBOARD) ---
@@ -3363,7 +3319,7 @@
             if (isManagerMode) {
                 closeMenu();
                 showSuccessToast("Painel da casa");
-                openManagerDashboard();
+                openManagerDashboard('painel');
                 window.scrollTo(0, 0);
             } else {
                 exitManagerMode();
@@ -3570,80 +3526,311 @@
             }, 600);
         }
 
-        function openManagerDashboard() {
+        // O modo gerente tem barra própria: Painel, Lista, Ler QR e Equipe.
+        let abaGerente = 'painel';
+
+        function openManagerDashboard(aba) {
+            const trocouDeAba = aba && aba !== abaGerente;
+            if (aba) abaGerente = aba;
+            if (abaGerente !== 'qr') pararCamera();
             currentTab = 'gerente';
             mostrarView('gerente');
+            ['painel', 'lista', 'qr', 'equipe'].forEach(t => {
+                const btn = document.getElementById('nav-g-' + t);
+                btn.classList.toggle('on', t === abaGerente);
+                if (t === abaGerente) btn.setAttribute('aria-current', 'page');
+                else btn.removeAttribute('aria-current');
+            });
+
+            const house = casaDoGerente();
             const view = document.getElementById('manager-dashboard-view');
-
-            const houseId = activeHouseId || 'moi';
-            const house = housesData.find(h => h.id === houseId);
-
-            const houseReservas = reservations.filter(r => r.houseId === houseId && r.status !== 'cancelada');
-            const totalPessoas = houseReservas.reduce((acc, r) => acc + r.guestsCount, 0);
-            const presentes = houseReservas.filter(r => r.status === 'presente').reduce((acc, r) => acc + r.guestsCount, 0);
-
-            let listReservasHtml;
-            if (houseReservas.length === 0) {
-                listReservasHtml = `
-                    <div class="group-list px-4 py-6 text-center t-sub c-2">
-                        Nenhum nome na lista de ${nomeCasa(house)} ainda.
-                    </div>`;
-            } else {
-                listReservasHtml = `<div class="group-list">${houseReservas.map(r => {
-                    const acao = r.status === 'presente'
-                        ? `<span class="t-foot c-live flex items-center gap-1 shrink-0"><i data-lucide="check" class="w-3.5 h-3.5"></i>Entrou</span>`
-                        : `<button onclick="confirmPresence('${r.id}')" class="press btn-primary sm shrink-0" style="height: 36px; padding: 0 14px;">Validar entrada</button>`;
-                    const quando = r.eventDate ? diaRelativo(new Date(r.eventDate)) : '';
-                    return `
-                        <div class="row" style="min-height: 64px;">
-                            <span class="flex-1 min-w-0 flex flex-col gap-0.5">
-                                <span class="t-callout font-semibold truncate">${escHtml(r.userName)}</span>
-                                <span class="t-foot c-2 truncate">${rotuloPessoas(r.guestsCount)} · ${escHtml(r.userPhone)}</span>
-                                ${quando ? `<span class="t-foot c-accent">${quando}</span>` : ''}
-                            </span>
-                            ${acao}
-                        </div>`;
-                }).join('')}</div>`;
-            }
+            const conteudo = {
+                painel: htmlPainelGerente, lista: htmlListaGerente, qr: htmlLeitorQr, equipe: h => htmlEquipeFreela(h.id)
+            }[abaGerente](house);
+            const subtitulo = { painel: 'Painel da casa', lista: 'Lista da portaria', qr: 'Ler QR da entrada', equipe: 'Equipe da noite' }[abaGerente];
 
             view.innerHTML = `
                 <div class="flex items-end justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="t-sub c-2">Painel da casa · portaria</p>
+                        <p class="t-sub c-2">${subtitulo}</p>
                         <h1 class="t-large truncate">${nomeCasa(house)}</h1>
                     </div>
                     <button onclick="exitManagerMode()" class="press btn-secondary shrink-0 mb-1">Sair</button>
                 </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="rounded-[18px] bg-[#1c1c1e] p-4 space-y-1">
-                        <p class="t-foot c-2">Na lista</p>
-                        <p class="t-large">${totalPessoas}</p>
-                    </div>
-                    <div class="rounded-[18px] bg-[#1c1c1e] p-4 space-y-1">
-                        <p class="t-foot c-2">Já entraram</p>
-                        <p class="t-large">${presentes}</p>
-                    </div>
-                </div>
-
-                <section class="space-y-2.5">
-                    <h2 class="t-title3">Nomes confirmados</h2>
-                    ${listReservasHtml}
-                </section>
-
-                ${htmlEquipeFreela(houseId)}
+                ${conteudo}
             `;
             lucide.createIcons();
+            if (trocouDeAba) window.scrollTo(0, 0);
+            if (abaGerente === 'qr') iniciarCamera();
+        }
+
+        function casaDoGerente() {
+            return housesData.find(h => h.id === (activeHouseId || 'moi'));
+        }
+
+        function reservasDaCasa(houseId) {
+            return reservations.filter(r => r.houseId === houseId && r.status !== 'cancelada');
+        }
+
+        function htmlPainelGerente(house) {
+            const lista = reservasDaCasa(house.id);
+            const pessoas = rs => rs.reduce((acc, r) => acc + r.guestsCount, 0);
+            const entraram = lista.filter(r => r.status === 'presente');
+            const emTurno = escalas.filter(e => e.status === 'em_turno' && contextoEscala(e).house.id === house.id).length;
+            const st = noiteEmDestaque(house);
+
+            const noite = st ? `
+                <div class="group-list">
+                    <div class="row" style="min-height: 64px;">
+                        <span class="flex-1 min-w-0 flex flex-col gap-0.5">
+                            <span class="t-foot c-2">${st.estado === 'agora' ? 'Rolando agora' : 'Próxima noite'}</span>
+                            <span class="t-callout font-semibold truncate">${nomeNoite(st.prog)}</span>
+                            <span class="t-foot c-2">${rotuloDia(st.inicio)} · ${fmtJanelaNoite(st)}</span>
+                        </span>
+                        ${st.estado === 'agora' ? '<span class="dot"></span>' : ''}
+                    </div>
+                </div>` : '';
+
+            const numero = (rotulo, valor) => `
+                <div class="rounded-[18px] bg-[#1c1c1e] p-4 space-y-1">
+                    <p class="t-foot c-2">${rotulo}</p>
+                    <p class="t-large">${valor}</p>
+                </div>`;
+
+            return `
+                ${noite}
+                <div class="grid grid-cols-2 gap-3">
+                    ${numero('Na lista', pessoas(lista))}
+                    ${numero('Já entraram', pessoas(entraram))}
+                    ${numero('Faltam entrar', pessoas(lista) - pessoas(entraram))}
+                    ${numero('Freelas em turno', emTurno)}
+                </div>
+                <button onclick="openManagerDashboard('qr')" class="press btn-primary w-full flex items-center justify-center gap-2">
+                    <i data-lucide="scan-line" class="w-5 h-5"></i>Ler QR da entrada
+                </button>
+            `;
+        }
+
+        function htmlListaGerente(house) {
+            const lista = reservasDaCasa(house.id);
+            if (lista.length === 0) {
+                return `
+                    <div class="group-list px-4 py-6 text-center t-sub c-2">
+                        Nenhum nome na lista de ${nomeCasa(house)} ainda.
+                    </div>`;
+            }
+            // Quem falta entrar vem primeiro: é o que a portaria procura.
+            const ordenada = [...lista].sort((a, b) => (a.status === 'presente') - (b.status === 'presente'));
+            const linhas = ordenada.map(r => {
+                const acao = r.status === 'presente'
+                    ? `<span class="t-foot c-live flex items-center gap-1 shrink-0"><i data-lucide="check" class="w-3.5 h-3.5"></i>Entrou</span>`
+                    : `<button onclick="confirmPresence('${r.id}')" class="press btn-primary sm shrink-0" style="height: 36px; padding: 0 14px;">Validar entrada</button>`;
+                const quando = r.eventDate ? diaRelativo(new Date(r.eventDate)) : '';
+                return `
+                    <div class="row" style="min-height: 64px;" data-busca="${escHtml((r.userName + ' ' + (r.userPhone || '')).toLocaleLowerCase('pt-BR'))}">
+                        <span class="flex-1 min-w-0 flex flex-col gap-0.5">
+                            <span class="t-callout font-semibold truncate">${escHtml(r.userName)}</span>
+                            <span class="t-foot c-2 truncate">${rotuloPessoas(r.guestsCount)}${r.userPhone ? ' · ' + escHtml(r.userPhone) : ''}</span>
+                            ${quando ? `<span class="t-foot c-accent">${quando}</span>` : ''}
+                        </span>
+                        ${acao}
+                    </div>`;
+            }).join('');
+
+            return `
+                <div class="group-list">
+                    <label class="row gap-2">
+                        <i data-lucide="search" class="w-4 h-4 c-2 shrink-0"></i>
+                        <input type="search" oninput="filtrarListaGerente(this.value)" placeholder="Buscar nome ou WhatsApp" class="bare t-body flex-1">
+                    </label>
+                </div>
+                <div id="lista-gerente" class="group-list">${linhas}</div>
+            `;
+        }
+
+        function filtrarListaGerente(termo) {
+            const t = termo.trim().toLocaleLowerCase('pt-BR');
+            document.querySelectorAll('#lista-gerente [data-busca]').forEach(el => {
+                el.classList.toggle('hidden', !!t && !el.dataset.busca.includes(t));
+            });
+        }
+
+        function marcarPresenca(id) {
+            const r = reservations.find(x => x.id === id);
+            if (!r) return false;
+            r.status = 'presente';
+            try { localStorage.setItem('gyn_reservas', JSON.stringify(reservations)); } catch (e) { /* segue na memória */ }
+            updateReservasUI();
+            return true;
         }
 
         function confirmPresence(id) {
-            const rIndex = reservations.findIndex(r => r.id === id);
-            if (rIndex !== -1) {
-                reservations[rIndex].status = 'presente';
-                localStorage.setItem('gyn_reservas', JSON.stringify(reservations));
-                showSuccessToast("Entrada Validada");
+            if (marcarPresenca(id)) {
+                showSuccessToast("Entrada validada");
                 openManagerDashboard();
             }
+        }
+
+        /* --- LER QR: câmera traseira + jsQR --- */
+
+        let cameraStream = null;
+        let leituraPausada = false;
+        let leituraPendente = null;   // reserva lida que espera o "Confirmar entrada"
+
+        function htmlLeitorQr(house) {
+            const pendentes = reservasDaCasa(house.id).filter(r => r.status !== 'presente');
+            const simular = pendentes.length === 0 ? '' : `
+                <section class="space-y-2">
+                    <p class="t-cap c-2 px-4">Sem outro celular? Simule a leitura</p>
+                    <div class="group-list">${pendentes.map(r => `
+                        <button onclick="simularLeitura('${r.id}')" class="press row justify-between">
+                            <span class="t-body truncate">${escHtml(r.userName)}</span>
+                            <span class="t-foot c-2 shrink-0">${rotuloPessoas(r.guestsCount)}</span>
+                        </button>`).join('')}
+                    </div>
+                </section>`;
+
+            return `
+                <div class="relative aspect-square rounded-[22px] overflow-hidden bg-[#1c1c1e]">
+                    <video id="qr-video" playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+                    <div class="absolute inset-[18%] rounded-[18px] border-2 border-white/80 pointer-events-none"></div>
+                    <p id="qr-status" class="absolute inset-x-0 bottom-0 p-3 text-center t-foot c-2 bg-black/50">Abrindo a câmera…</p>
+                </div>
+                <div id="qr-resultado"></div>
+                ${simular}
+            `;
+        }
+
+        function simularLeitura(id) {
+            processarLeitura(payloadIngresso(reservations.find(r => r.id === id)));
+            document.getElementById('qr-resultado').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        async function iniciarCamera() {
+            leituraPausada = false;
+            leituraPendente = null;
+            const status = document.getElementById('qr-status');
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof jsQR === 'undefined') {
+                status.innerText = 'Câmera indisponível neste navegador.';
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+                // O gerente pode ter trocado de aba enquanto o navegador pedia permissão
+                if (currentTab !== 'gerente' || abaGerente !== 'qr') { stream.getTracks().forEach(t => t.stop()); return; }
+                pararCamera();
+                cameraStream = stream;
+                const video = document.getElementById('qr-video');
+                video.srcObject = stream;
+                await video.play();
+                status.innerText = 'Aponte para o QR do ingresso';
+                requestAnimationFrame(lerQuadro);
+            } catch (e) {
+                status.innerText = 'Sem acesso à câmera. Libere a permissão ou simule abaixo.';
+            }
+        }
+
+        function pararCamera() {
+            if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+            cameraStream = null;
+        }
+
+        const canvasQr = document.createElement('canvas');
+
+        function lerQuadro() {
+            const video = document.getElementById('qr-video');
+            if (!cameraStream || !video) return;
+            if (!leituraPausada && video.readyState === video.HAVE_ENOUGH_DATA) {
+                // Reduz o quadro: o jsQR roda bem mais rápido e o QR continua legível
+                const escala = Math.min(1, 480 / Math.max(video.videoWidth, video.videoHeight));
+                canvasQr.width = Math.round(video.videoWidth * escala);
+                canvasQr.height = Math.round(video.videoHeight * escala);
+                const ctx = canvasQr.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(video, 0, 0, canvasQr.width, canvasQr.height);
+                const img = ctx.getImageData(0, 0, canvasQr.width, canvasQr.height);
+                const achado = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+                if (achado && achado.data) processarLeitura(achado.data);
+            }
+            requestAnimationFrame(lerQuadro);
+        }
+
+        function processarLeitura(texto) {
+            leituraPausada = true;
+            if (navigator.vibrate) navigator.vibrate(60);
+            const house = casaDoGerente();
+            const lido = lerPayloadIngresso(texto);
+            leituraPendente = null;
+
+            let tipo, titulo, detalhe = '', acao = '';
+            if (!lido) {
+                tipo = 'erro'; titulo = 'QR inválido'; detalhe = 'Este código não é um ingresso GoDrinking.';
+            } else {
+                const outraCasa = housesData.find(h => h.id === lido.houseId);
+                const local = reservations.find(r => r.id === lido.id);
+                const r = local || lido;
+                const prog = outraCasa && outraCasa.programacao.find(p => p.id === lido.eventId);
+                const noite = prog ? nomeNoite(prog) : '';
+                const quando = lido.eventDate ? diaRelativo(new Date(lido.eventDate)) : '';
+                detalhe = `${rotuloPessoas(r.guestsCount)}${noite ? ' · ' + noite : ''}${quando ? ' · ' + quando : ''}`;
+                titulo = escHtml(r.userName);
+
+                if (lido.houseId !== house.id) {
+                    tipo = 'erro'; titulo = 'Ingresso de outra casa';
+                    detalhe = `${escHtml(r.userName)} está na lista de ${outraCasa ? nomeCasa(outraCasa) : 'outra casa'}.`;
+                } else if (r.status === 'cancelada') {
+                    tipo = 'erro'; detalhe = 'Reserva cancelada pelo cliente.';
+                } else if (r.status === 'presente') {
+                    tipo = 'aviso'; detalhe = 'Esta entrada já foi validada.';
+                } else if (lido.eventDate && reservaPassou({ ...lido, status: 'confirmada' }, agora())) {
+                    tipo = 'erro'; detalhe = 'A noite deste ingresso já acabou.';
+                } else {
+                    tipo = 'ok';
+                    leituraPendente = { ...lido, ...(local || {}) };
+                    acao = `<button onclick="confirmarLeitura()" class="press btn-primary flex-1">Confirmar entrada</button>`;
+                }
+            }
+
+            const cor = { ok: 'var(--live)', aviso: '#ff9f0a', erro: '#ff453a' }[tipo];
+            const icone = { ok: 'circle-check', aviso: 'circle-alert', erro: 'circle-x' }[tipo];
+            document.getElementById('qr-status').innerText = 'Leitura pausada';
+            document.getElementById('qr-resultado').innerHTML = `
+                <div class="rounded-[18px] bg-[#1c1c1e] p-4 space-y-3" style="box-shadow: inset 0 0 0 1.5px ${cor};">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="${icone}" class="w-7 h-7 shrink-0" style="color: ${cor};"></i>
+                        <div class="min-w-0">
+                            <p class="t-headline truncate">${titulo}</p>
+                            <p class="t-foot c-2">${detalhe}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        ${acao}
+                        <button onclick="retomarLeitura()" class="press btn-secondary ${acao ? '' : 'flex-1'}">Ler outro</button>
+                    </div>
+                </div>`;
+            lucide.createIcons();
+        }
+
+        function confirmarLeitura() {
+            const r = leituraPendente;
+            if (!r) return;
+            // Ingresso de outro celular: entra na lista desta casa na hora da leitura
+            if (!reservations.some(x => x.id === r.id)) {
+                const house = housesData.find(h => h.id === r.houseId);
+                const prog = house.programacao.find(p => p.id === r.eventId);
+                reservations.unshift({
+                    ...r, houseName: house.nome, eventName: prog ? prog.nome : '', userPhone: '', status: 'confirmada'
+                });
+            }
+            marcarPresenca(r.id);
+            showSuccessToast(`Entrada validada · ${rotuloPessoas(r.guestsCount)}`);
+            openManagerDashboard('qr');
+        }
+
+        function retomarLeitura() {
+            leituraPausada = false;
+            leituraPendente = null;
+            document.getElementById('qr-resultado').innerHTML = '';
+            document.getElementById('qr-status').innerText = cameraStream ? 'Aponte para o QR do ingresso' : 'Sem câmera. Simule abaixo.';
         }
 
         /* ===================================================================

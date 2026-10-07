@@ -123,8 +123,8 @@ exatamente o que a `F2` do `05-escopo-mvp.md` já exigia no critério de aceite.
 - **Entrada virou o dado mais visível da noite.** É o que faz sair de casa ou não.
 
 ### Extras para a demo
-- **Relógio simulável:** modo Gerente → "Simular horário", ou `?dia=sex&hora=21:40`
-  na URL. A reunião nunca é às 22h de sexta; sem isso o app abre vazio.
+- ~~Relógio simulável~~ removido em 2026-10-07: o app usa sempre o dia e a hora reais.
+- **Modo gerente com barra própria:** Painel, Lista (busca + validar entrada), Ler QR (câmera; o QR do ingresso é real e carrega a reserva, então lê o ingresso de outro celular) e Equipe.
 - **Link direto:** `?casa=moi` abre a casa, `?aba=promos` abre a aba. Serve para o
   "vem pro Môi hoje" colado no direct cair na tela certa.
 - **Auto-atualização a cada minuto:** as contagens regressivas correm na frente do cliente.
