@@ -120,10 +120,11 @@
         .group-list { background: var(--fill-1); border-radius: 16px; overflow: hidden; }
         .group-list.on-fill { background: var(--fill-2); border-radius: 14px; }
         .row { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-height: 48px; width: 100%; text-align: left; }
-        .row + .row::before { content: ''; position: absolute; top: 0; right: 0; left: var(--inset, 16px); height: 0.5px; background: var(--sep); }
+        .row:not(.hidden) ~ .row::before { content: ''; position: absolute; top: 0; right: 0; left: var(--inset, 16px); height: 0.5px; background: var(--sep); }
 
         .btn-primary { height: 50px; padding: 0 24px; border-radius: 25px; background: #ffffff; color: #000000; font-size: 17px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
         .btn-primary.sm { height: 44px; padding: 0 20px; border-radius: 22px; font-size: 15px; }
+        .btn-primary.alt { background: var(--fill-2); color: #ffffff; }
         .btn-primary:disabled { background: var(--fill-2); color: var(--label-3); }
         .btn-secondary { height: 36px; padding: 0 14px; border-radius: 18px; background: var(--fill-2); color: #ffffff; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
 
@@ -423,12 +424,12 @@
 
         <!-- CASA: ação principal fixa no rodapé -->
         <div id="casa-cta" class="bar-bottom fixed bottom-0 inset-x-0 max-w-md mx-auto z-40 hidden">
-            <div class="flex items-center justify-between gap-3 px-4 pt-3.5" style="padding-bottom: calc(env(safe-area-inset-bottom) + 14px);">
+            <div id="casa-cta-linha" class="flex items-center justify-between gap-3 px-4 pt-3.5" style="padding-bottom: calc(env(safe-area-inset-bottom) + 14px);">
                 <div class="min-w-0 flex flex-col gap-0.5">
                     <span id="casa-cta-principal" class="t-headline truncate"></span>
                     <span id="casa-cta-detalhe" class="t-foot c-2 truncate"></span>
                 </div>
-                <button id="casa-cta-botao" class="press btn-primary shrink-0"></button>
+                <div id="casa-cta-botoes" class="flex gap-2 shrink-0"></div>
             </div>
         </div>
 
@@ -492,20 +493,21 @@
                 <form id="reservation-form" onsubmit="handleReservationSubmit(event)" class="space-y-5 pt-3">
                     <input type="hidden" id="modal-event-id">
                     <input type="hidden" id="modal-house-id">
+                    <input type="hidden" id="modal-tipo">
                     <input type="hidden" id="res-guests" value="2">
 
-                    <div class="space-y-2">
+                    <div id="res-quem-vai" class="space-y-2">
                         <p class="t-cap c-2 px-4">Quem vai</p>
                         <div class="group-list on-fill">
                             <label id="res-linha-nome" class="row">
-                                <span class="t-body shrink-0">Nome na lista</span>
+                                <span id="res-nome-rotulo" class="t-body shrink-0">Nome na lista</span>
                                 <input type="text" id="res-name" required autocomplete="name" placeholder="Seu nome" class="bare t-body c-2 flex-1 text-right">
                             </label>
                             <label id="res-linha-tel" class="row">
                                 <span class="t-body shrink-0">WhatsApp</span>
                                 <input type="tel" id="res-phone" required autocomplete="tel" placeholder="(62) 99999-9999" class="bare t-body c-2 flex-1 text-right">
                             </label>
-                            <div class="row justify-between" style="min-height: 56px;">
+                            <div id="res-linha-pessoas" class="row justify-between" style="min-height: 56px;">
                                 <span class="t-body">Pessoas</span>
                                 <div class="flex items-center gap-3.5">
                                     <button type="button" id="res-menos" onclick="alterarPessoas(-1)" aria-label="Menos uma pessoa" class="press stepper"><i data-lucide="minus" class="w-4 h-4"></i></button>
@@ -835,6 +837,7 @@
                         inicio: "20:00",
                         fim: "04:00",
                         nome: "SÁBADO DE FLUXO",
+                        garantias: ["lista", "mesa"],
                         djs: "LIPE TRANCOSO, JOVEM YANZ",
                         descricao: "Os melhores beats urbanos, trap, hip hop e funk de rua para agitar o seu sabadão.",
                         entrada: [
@@ -1813,7 +1816,7 @@
         function heroHtml(house, st, ref) {
             const ent = infoEntrada(st.prog, st.occ, ref);
             const aberta = st.estado === 'agora';
-            const acao = house.categoria === 'bar' ? 'Reservar mesa' : 'Entrar na lista';
+            const tipo = garantiasDaNoite(house, st.prog)[0];
             const generos = house.especialidade.split(',').slice(0, 2).map(s => s.trim()).join(', ');
             const chipEsq = aberta
                 ? `<span class="glass chip-glass"><span class="dot pulse"></span>Rolando agora</span>`
@@ -1843,7 +1846,7 @@
                                     <span class="t-headline ${ent.urgente ? 'c-accent' : ''}">${ent.principal}</span>
                                     ${ent.detalheCurto ? `<span class="t-foot text-[#aeaeb2]">${ent.detalheCurto}</span>` : ''}
                                 </div>
-                                <button onclick="openReservationModal('${st.prog.id}', '${house.id}')" class="press btn-primary sm pointer-events-auto relative">${acao}</button>
+                                <button onclick="openReservationModal('${st.prog.id}', '${house.id}', '${tipo}')" class="press btn-primary sm pointer-events-auto relative">${GARANTIAS[tipo].acao}</button>
                             </div>
                         </div>
                     </article>
@@ -3120,9 +3123,15 @@
                 principal.classList.toggle('c-accent', ent.urgente);
                 document.getElementById('casa-cta-detalhe').innerText =
                     rel === 'Hoje' ? (ent.detalheCurto || `${fmtHora(st.inicio)} – ${fmtHora(st.fim)}`) : `${rel} às ${fmtHora(st.inicio)}`;
-                const botao = document.getElementById('casa-cta-botao');
-                botao.innerText = house.categoria === 'bar' ? 'Reservar mesa' : 'Entrar na lista';
-                botao.onclick = () => openReservationModal(st.prog.id, house.id);
+                // Com lista e mesa, os dois botões vão para uma linha própria embaixo do preço
+                const tipos = garantiasDaNoite(house, st.prog);
+                const duas = tipos.length > 1;
+                document.getElementById('casa-cta-linha').classList.toggle('flex-col', duas);
+                document.getElementById('casa-cta-linha').classList.toggle('items-stretch', duas);
+                const botoes = document.getElementById('casa-cta-botoes');
+                botoes.classList.toggle('w-full', duas);
+                botoes.innerHTML = tipos.map((t, i) => `
+                    <button onclick="openReservationModal('${st.prog.id}', '${house.id}', '${t}')" class="press btn-primary ${i ? 'alt' : ''} ${duas ? 'flex-1' : ''}">${GARANTIAS[t].acao}</button>`).join('');
             } else {
                 cta.classList.add('hidden');
             }
@@ -3164,6 +3173,29 @@
 
         let pessoasReserva = 2;
 
+        // Lista é o nome de uma pessoa e uma condição de entrada. Mesa é um
+        // lugar para um grupo, por isso só ela pergunta quantas pessoas vão.
+        const GARANTIAS = {
+            lista: { acao: 'Entrar na lista', feito: 'Você está na lista', desfazer: 'Retirar nome da lista', pergunta: 'Retirar seu nome da lista?', confirma: 'Retirar nome', desfeito: 'Nome retirado da lista' },
+            mesa: { acao: 'Reservar mesa', feito: 'Mesa reservada', desfazer: 'Cancelar reserva', pergunta: 'Cancelar a reserva da mesa?', confirma: 'Cancelar reserva', desfeito: 'Reserva cancelada' }
+        };
+
+        // Cada noite diz o que oferece; sem isso, vale o natural da casa.
+        function garantiasDaNoite(house, prog) {
+            return prog.garantias || [house.categoria === 'bar' ? 'mesa' : 'lista'];
+        }
+
+        // Reservas antigas não guardavam o tipo
+        function tipoDaReserva(r) {
+            if (r.tipo) return r.tipo;
+            const house = housesData.find(h => h.id === r.houseId);
+            return house && house.categoria === 'bar' ? 'mesa' : 'lista';
+        }
+
+        function rotuloGarantia(r) {
+            return tipoDaReserva(r) === 'mesa' ? `Mesa · ${rotuloPessoas(r.guestsCount)}` : 'Lista';
+        }
+
         function rotuloPessoas(n) {
             return n === 1 ? '1 pessoa' : `${n} pessoas`;
         }
@@ -3174,18 +3206,18 @@
             document.getElementById('res-guests-label').innerText = pessoasReserva;
             document.getElementById('res-menos').disabled = pessoasReserva <= 1;
             document.getElementById('res-mais').disabled = pessoasReserva >= 10;
-            const house = housesData.find(h => h.id === document.getElementById('modal-house-id').value);
-            const verbo = house && house.categoria === 'bar' ? 'Reservar' : 'Confirmar';
-            document.getElementById('res-submit').innerText = `${verbo} · ${rotuloPessoas(pessoasReserva)}`;
+            document.getElementById('res-submit').innerText = `Reservar mesa · ${rotuloPessoas(pessoasReserva)}`;
         }
 
-        function openReservationModal(eventId, houseId) {
+        function openReservationModal(eventId, houseId, tipo) {
             const house = housesData.find(h => h.id === houseId);
             const p = house.programacao.find(prog => prog.id === eventId);
             const ref = agora();
             const st = statusNoite(p, ref);
-            const isBar = house.categoria === 'bar';
+            tipo = tipo || garantiasDaNoite(house, p)[0];
+            const mesa = tipo === 'mesa';
 
+            document.getElementById('modal-tipo').value = tipo;
             document.getElementById('modal-event-id').value = eventId;
             document.getElementById('modal-house-id').value = houseId;
             document.getElementById('modal-event-title').innerText = nomeNoite(p);
@@ -3234,12 +3266,18 @@
                 caixa.innerHTML = `<p class="t-sub c-2 px-4">Noite ainda sem horário publicado.</p>`;
             }
 
-            document.getElementById('res-nota').innerText = isBar
+            document.getElementById('res-nota').innerText = mesa
                 ? 'Reserva gratuita, válida por até 30 minutos após o horário combinado. Sujeita a disponibilidade.'
-                : 'Nome na lista sujeito à lotação da casa. Mostre o QR na portaria.';
+                : 'A lista é individual: cada amigo entra com o próprio celular. Sujeita à lotação da casa.';
 
-            pessoasReserva = 2;
-            alterarPessoas(0);
+            document.getElementById('res-nome-rotulo').innerText = mesa ? 'Em nome de' : 'Nome na lista';
+            document.getElementById('res-linha-pessoas').classList.toggle('hidden', !mesa);
+            pessoasReserva = mesa ? 2 : 1;
+            if (mesa) alterarPessoas(0);
+            else {
+                document.getElementById('res-guests').value = 1;
+                document.getElementById('res-submit').innerText = GARANTIAS.lista.acao;
+            }
 
             document.getElementById('reservation-modal').classList.remove('hidden');
             lucide.createIcons();
@@ -3259,6 +3297,9 @@
             document.getElementById('res-name').value = logado ? sessao.nome : '';
             document.getElementById('res-phone').value = logado ? sessao.telefone : '';
             document.getElementById('res-login-nota').classList.toggle('hidden', logado);
+            // Lista de visitante não tem nada a preencher antes do login
+            const lista = document.getElementById('modal-tipo').value === 'lista';
+            document.getElementById('res-quem-vai').classList.toggle('hidden', lista && !logado);
         }
 
         function handleReservationSubmit(event) {
@@ -3281,7 +3322,8 @@
             const houseId = document.getElementById('modal-house-id').value;
             const name = document.getElementById('res-name').value.trim();
             const phone = document.getElementById('res-phone').value.trim();
-            const guests = parseInt(document.getElementById('res-guests').value, 10);
+            const tipo = document.getElementById('modal-tipo').value;
+            const guests = tipo === 'mesa' ? parseInt(document.getElementById('res-guests').value, 10) : 1;
 
             const house = housesData.find(h => h.id === houseId);
             const p = house.programacao.find(prog => prog.id === eventId);
@@ -3298,6 +3340,7 @@
                 eventDate: stRes ? stRes.inicio.toISOString() : null,
                 userName: name,
                 userPhone: phone,
+                tipo: tipo,
                 guestsCount: guests,
                 status: 'confirmada'
             };
@@ -3311,7 +3354,7 @@
             } catch (e) { /* demo segue sem persistir */ }
 
             closeReservationModal();
-            showSuccessToast(house.categoria === 'bar' ? 'Mesa reservada' : 'Você está na lista');
+            showSuccessToast(GARANTIAS[tipo].feito);
             ingressosFiltro = 'proximos';
             updateReservasUI();
 
@@ -3359,7 +3402,7 @@
 
         function payloadIngresso(r) {
             return PREFIXO_INGRESSO + new URLSearchParams({
-                id: r.id, h: r.houseId, e: r.eventId, d: r.eventDate || '', n: r.userName, g: r.guestsCount
+                id: r.id, h: r.houseId, e: r.eventId, d: r.eventDate || '', n: r.userName, g: r.guestsCount, t: tipoDaReserva(r)
             }).toString();
         }
 
@@ -3370,7 +3413,8 @@
             return {
                 id: p.get('id'), houseId: p.get('h'), eventId: p.get('e'),
                 eventDate: p.get('d') || null, userName: p.get('n') || 'Sem nome',
-                guestsCount: parseInt(p.get('g'), 10) || 1
+                guestsCount: parseInt(p.get('g'), 10) || 1,
+                tipo: p.get('t') === 'mesa' ? 'mesa' : 'lista'
             };
         }
 
@@ -3419,6 +3463,7 @@
                 }
             }
 
+            const mesa = tipoDaReserva(r) === 'mesa';
             const nomeEvento = prog ? nomeNoite(prog) : titulo(r.eventName);
             const casa = house ? nomeCasa(house) : titulo(r.houseName);
 
@@ -3439,7 +3484,7 @@
                         <h3 class="t-title2">${nomeEvento}</h3>
                         <div class="grid grid-cols-3 gap-2">
                             <div class="min-w-0"><p class="text-[11px] font-semibold c-2 tracking-wide">DATA</p><p class="t-sub font-semibold truncate">${quando}</p></div>
-                            <div class="min-w-0"><p class="text-[11px] font-semibold c-2 tracking-wide">PESSOAS</p><p class="t-sub font-semibold">${r.guestsCount}</p></div>
+                            <div class="min-w-0"><p class="text-[11px] font-semibold c-2 tracking-wide">${mesa ? 'MESA' : 'LISTA'}</p><p class="t-sub font-semibold truncate">${mesa ? rotuloPessoas(r.guestsCount) : 'Individual'}</p></div>
                             <div class="min-w-0"><p class="text-[11px] font-semibold c-2 tracking-wide">ENTRADA</p><p class="t-sub font-semibold truncate">${entrada}</p></div>
                         </div>
                         <p class="t-foot c-2">Em nome de ${escHtml(r.userName)}</p>
@@ -3448,7 +3493,7 @@
                     <div class="mt-4 border-t-[1.5px] border-dashed border-[#3a3a3c]"></div>
                     <div class="px-4 pt-5 pb-4 flex flex-col items-center gap-2.5">
                         <div class="p-3 rounded-[14px] bg-white">${qrSvg(payloadIngresso(r))}</div>
-                        <p class="t-foot c-2">Mostre na portaria · vale uma entrada</p>
+                        <p class="t-foot c-2">Mostre na portaria · ${mesa ? `vale para ${rotuloPessoas(r.guestsCount)}` : 'vale uma entrada'}</p>
                         <p class="mono t-foot c-3 tracking-widest">${codigoPortaria(r)}</p>
                     </div>`}
                     ${aviso ? `
@@ -3458,7 +3503,7 @@
                     </div>` : ''}
                     ${!passou ? `
                     <div class="border-t-[0.5px] border-white/10">
-                        <button onclick="cancelReserva('${r.id}')" class="press w-full h-12 t-sub c-danger">Retirar nome da lista</button>
+                        <button onclick="cancelReserva('${r.id}')" class="press w-full h-12 t-sub c-danger">${GARANTIAS[tipoDaReserva(r)].desfazer}</button>
                     </div>` : ''}
                 </article>`;
         }
@@ -3520,14 +3565,15 @@
         }
 
         async function cancelReserva(id) {
-            const ok = await confirmar({ titulo: 'Retirar seu nome da lista?', acao: 'Retirar nome', perigo: true });
+            const g = GARANTIAS[tipoDaReserva(reservations.find(r => r.id === id))];
+            const ok = await confirmar({ titulo: g.pergunta, acao: g.confirma, perigo: true });
             if (!ok) return;
             const rIndex = reservations.findIndex(r => r.id === id);
             if (rIndex !== -1) {
                 reservations[rIndex].status = 'cancelada';
                 try { localStorage.setItem('gyn_reservas', JSON.stringify(reservations)); } catch (e) { /* demo */ }
                 updateReservasUI();
-                showSuccessToast("Nome retirado da lista");
+                showSuccessToast(g.desfeito);
             }
         }
 
@@ -4404,7 +4450,7 @@
             return `
                 ${noite}
                 <div class="grid grid-cols-2 gap-3">
-                    ${numero('Na lista', pessoas(lista))}
+                    ${numero('Esperadas', pessoas(lista))}
                     ${numero('Já entraram', pessoas(entraram))}
                     ${numero('Faltam entrar', pessoas(lista) - pessoas(entraram))}
                     ${numero('Freelas em turno', emTurno)}
@@ -4434,7 +4480,7 @@
                     <div class="row" style="min-height: 64px;" data-busca="${escHtml((r.userName + ' ' + (r.userPhone || '')).toLocaleLowerCase('pt-BR'))}">
                         <span class="flex-1 min-w-0 flex flex-col gap-0.5">
                             <span class="t-callout font-semibold truncate">${escHtml(r.userName)}</span>
-                            <span class="t-foot c-2 truncate">${rotuloPessoas(r.guestsCount)}${r.userPhone ? ' · ' + escHtml(r.userPhone) : ''}</span>
+                            <span class="t-foot c-2 truncate">${rotuloGarantia(r)}${r.userPhone ? ' · ' + escHtml(r.userPhone) : ''}</span>
                             ${quando ? `<span class="t-foot c-accent">${quando}</span>` : ''}
                         </span>
                         ${acao}
@@ -4489,7 +4535,7 @@
                     <div class="group-list">${pendentes.map(r => `
                         <button onclick="simularLeitura('${r.id}')" class="press row justify-between">
                             <span class="t-body truncate">${escHtml(r.userName)}</span>
-                            <span class="t-foot c-2 shrink-0">${rotuloPessoas(r.guestsCount)}</span>
+                            <span class="t-foot c-2 shrink-0">${rotuloGarantia(r)}</span>
                         </button>`).join('')}
                     </div>
                 </section>`;
@@ -4575,7 +4621,7 @@
                 const prog = outraCasa && outraCasa.programacao.find(p => p.id === lido.eventId);
                 const noite = prog ? nomeNoite(prog) : '';
                 const quando = lido.eventDate ? diaRelativo(new Date(lido.eventDate)) : '';
-                detalhe = `${rotuloPessoas(r.guestsCount)}${noite ? ' · ' + noite : ''}${quando ? ' · ' + quando : ''}`;
+                detalhe = `${rotuloGarantia(r)}${noite ? ' · ' + noite : ''}${quando ? ' · ' + quando : ''}`;
                 titulo = escHtml(r.userName);
 
                 if (lido.houseId !== house.id) {
@@ -4626,7 +4672,7 @@
                 });
             }
             marcarPresenca(r.id);
-            showSuccessToast(`Entrada validada · ${rotuloPessoas(r.guestsCount)}`);
+            showSuccessToast(`Entrada validada · ${rotuloGarantia(r)}`);
             openManagerDashboard('qr');
         }
 
