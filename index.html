@@ -3410,9 +3410,15 @@
             document.getElementById('reservation-modal').classList.add('hidden');
         }
 
+        // Onde a borda de erro aparece: a .row do campo ou, no código, as quatro caixas.
+        function moldurasDoCampo(input) {
+            const row = input.closest('.row');
+            return row ? [row] : input.closest('.otp').querySelectorAll('.otp-caixa');
+        }
+
         function marcarErroCampo(id, msg) {
             const input = document.getElementById(id);
-            input.closest('.row').classList.add('campo-erro');
+            moldurasDoCampo(input).forEach(el => el.classList.add('campo-erro'));
             input.setAttribute('aria-invalid', 'true');
             const erro = document.getElementById(id + '-erro');
             erro.textContent = msg;
@@ -3421,7 +3427,7 @@
 
         function limparErroCampo(id) {
             const input = document.getElementById(id);
-            input.closest('.row').classList.remove('campo-erro');
+            moldurasDoCampo(input).forEach(el => el.classList.remove('campo-erro'));
             input.removeAttribute('aria-invalid');
             const erro = document.getElementById(id + '-erro');
             erro.textContent = '';
@@ -3924,9 +3930,11 @@
 
         /* ===================================================================
            SESSÃO E LOGIN
-           Telefone + código, sem senha (decisão #6). Na simulação, qualquer
-           código de 4 números passa e nenhuma mensagem é enviada.
+           Telefone + código, sem senha (decisão #6). Na simulação, nenhuma
+           mensagem é enviada e o código válido é CODIGO_DEMO, mostrado na tela.
            =================================================================== */
+
+        const CODIGO_DEMO = '2468';
 
         let login = null;   // { etapa: telefone | codigo | nome, motivo, aoConcluir, telefone, canal, reenvioAte, timer }
 
@@ -3982,19 +3990,22 @@
                         ${cabecalho('Entre com seu celular', login.motivo === 'reserva'
                             ? 'Pra guardar seu lugar, a casa precisa saber quem vai. Sem senha: mandamos um código pra confirmar o número.'
                             : 'Sem senha: mandamos um código pra confirmar que o número é seu.')}
-                        <div class="group-list on-fill">
-                            <label class="row">
-                                <span class="t-body c-2 shrink-0">+55</span>
-                                <input id="login-tel" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(62) 99999-9999"
-                                    value="${escHtml(login.telefone)}" oninput="aoDigitarTelefone(this)"
-                                    onkeydown="if (event.key === 'Enter') enviarCodigo('WhatsApp')" class="bare t-body flex-1" aria-label="Número de celular com DDD">
-                            </label>
+                        <div>
+                            <div class="group-list on-fill">
+                                <label class="row">
+                                    <span class="t-body c-2 shrink-0">+55</span>
+                                    <input id="login-tel" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(62) 99999-9999"
+                                        value="${escHtml(login.telefone)}" oninput="aoDigitarTelefone(this)"
+                                        onkeydown="if (event.key === 'Enter') enviarCodigo('WhatsApp')" class="bare t-body flex-1" aria-label="Número de celular com DDD">
+                                </label>
+                            </div>
+                            <p id="login-tel-erro" role="alert" class="msg-erro px-4 pt-2 hidden"></p>
                         </div>
                         <div class="space-y-1">
                             <button id="login-enviar" onclick="enviarCodigo('WhatsApp')" class="press btn-primary w-full">
                                 <i data-lucide="message-circle" class="w-[18px] h-[18px]"></i>Receber código no WhatsApp
                             </button>
-                            <button id="login-sms" onclick="enviarCodigo('SMS')" class="press w-full h-11 t-sub c-accent disabled:opacity-40">Prefiro receber por SMS</button>
+                            <button id="login-sms" onclick="enviarCodigo('SMS')" class="press w-full h-11 t-sub c-accent disabled:opacity-40 inline-flex items-center justify-center gap-2">Prefiro receber por SMS</button>
                         </div>
                         <p class="t-foot c-3 text-center px-4">Simulação: nenhuma mensagem é enviada.</p>
                     </div>`;
@@ -4004,16 +4015,20 @@
                 caixa.innerHTML = `
                     <div class="space-y-6">
                         ${cabecalho('Digite o código', `Enviamos 4 números pelo ${login.canal} para <span class="text-white font-semibold whitespace-nowrap">${escHtml(login.telefone)}</span>.`)}
-                        <div class="otp">
-                            ${[0, 1, 2, 3].map(() => '<div class="otp-caixa" aria-hidden="true"></div>').join('')}
-                            <input id="login-codigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4"
-                                oninput="aoDigitarCodigo(this)" aria-label="Código de 4 números">
+                        <div class="space-y-3">
+                            <div class="otp">
+                                ${[0, 1, 2, 3].map(() => '<div class="otp-caixa" aria-hidden="true"></div>').join('')}
+                                <input id="login-codigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4"
+                                    oninput="aoDigitarCodigo(this)" aria-label="Código de 4 números">
+                            </div>
+                            <p id="login-codigo-erro" role="alert" class="msg-erro text-center px-4 hidden"></p>
                         </div>
-                        <div class="flex justify-center gap-6">
+                        <div id="login-acoes-codigo" class="flex justify-center gap-6">
                             <button id="login-reenviar" onclick="reenviarCodigo()" class="press h-11 t-sub c-accent disabled:text-[#8e8e93]"></button>
                             <button onclick="voltarLogin()" class="press h-11 t-sub c-accent">Trocar número</button>
                         </div>
-                        <p class="t-foot c-3 text-center px-4">Simulação: qualquer código de 4 números funciona.</p>
+                        <p id="login-verificando" role="status" class="h-11 t-sub c-2 flex items-center justify-center gap-2 hidden"><span class="spinner" aria-hidden="true"></span>Verificando…</p>
+                        <p class="t-foot c-3 text-center px-4">Simulação: o código é ${CODIGO_DEMO}.</p>
                     </div>`;
                 aoDigitarCodigo(document.getElementById('login-codigo'));
                 iniciarContagemReenvio();
@@ -4047,13 +4062,26 @@
         function aoDigitarTelefone(input) {
             input.value = mascararTelefone(input.value);
             login.telefone = input.value;
+            limparErroCampo('login-tel');
             const completo = digitos(input.value).length === 11;
             document.getElementById('login-enviar').disabled = !completo;
             document.getElementById('login-sms').disabled = !completo;
         }
 
-        function enviarCodigo(canal) {
-            if (digitos(login.telefone).length !== 11) return;
+        async function enviarCodigo(canal) {
+            if (login.enviando) return;
+            if (digitos(login.telefone).length !== 11) {
+                marcarErroCampo('login-tel', 'Faltam números. Celular com DDD.');
+                return;
+            }
+            const atual = login;
+            atual.enviando = true;
+            document.getElementById('login-tel').disabled = true;
+            document.getElementById(canal === 'SMS' ? 'login-enviar' : 'login-sms').disabled = true;
+            emVoo(document.getElementById(canal === 'SMS' ? 'login-sms' : 'login-enviar'), 'Enviando…');
+            await aguardar(900);
+            atual.enviando = false;
+            if (login !== atual || login.etapa !== 'telefone') return;   // fechou ou saiu no meio
             login.canal = canal;
             login.etapa = 'codigo';
             login.reenvioAte = Date.now() + 30000;
@@ -4083,15 +4111,35 @@
         function aoDigitarCodigo(input) {
             input.value = digitos(input.value).slice(0, 4);
             const v = input.value;
+            limparErroCampo('login-codigo');
             document.querySelectorAll('#login-conteudo .otp-caixa').forEach((c, i) => {
                 c.innerText = v[i] || '';
                 c.classList.toggle('atual', i === v.length);
             });
-            if (v.length === 4) setTimeout(verificarCodigo, 250);
+            if (v.length === 4) verificarCodigo();
         }
 
-        function verificarCodigo() {
+        async function verificarCodigo() {
             if (!login || login.etapa !== 'codigo') return;
+            const atual = login;
+            const input = document.getElementById('login-codigo');
+            const acoes = document.getElementById('login-acoes-codigo');
+            const verificando = document.getElementById('login-verificando');
+            input.disabled = true;
+            acoes.classList.add('hidden');
+            verificando.classList.remove('hidden');
+            await aguardar(700);
+            if (login !== atual || login.etapa !== 'codigo') return;   // fechou ou trocou de número no meio
+            if (input.value !== CODIGO_DEMO) {
+                verificando.classList.add('hidden');
+                acoes.classList.remove('hidden');
+                input.disabled = false;
+                input.value = '';
+                aoDigitarCodigo(input);
+                marcarErroCampo('login-codigo', 'Código incorreto. Confira e tente de novo.');
+                input.focus();
+                return;
+            }
             // Quem volta com o mesmo número já tem nome: pula direto para a lista.
             const conhecido = sessao.nome && digitos(sessao.telefone) === digitos(login.telefone);
             if (conhecido) return concluirLogin(sessao.nome, true);
@@ -4099,9 +4147,20 @@
             renderLogin();
         }
 
-        function concluirLogin(nome, deVolta) {
+        async function concluirLogin(nome, deVolta) {
             nome = (nome || '').trim();
-            if (nome.length < 2) return;
+            if (nome.length < 2 || login.entrando) return;
+            // Na etapa do nome, "Continuar" fica em voo; quem volta já passou pelo "Verificando…".
+            const botao = document.getElementById('login-continuar');
+            if (botao) {
+                const atual = login;
+                atual.entrando = true;
+                document.getElementById('login-nome').disabled = true;
+                emVoo(botao, 'Entrando…');
+                await aguardar(600);
+                atual.entrando = false;
+                if (login !== atual) return;   // fechou no meio
+            }
             sessao.logado = true;
             sessao.nome = nome;
             sessao.telefone = login.telefone;
@@ -4115,7 +4174,8 @@
             if (aoConcluir) aoConcluir();
         }
 
-        function sairDaConta() {
+        async function sairDaConta() {
+            if (!await confirmar({ titulo: 'Sair da conta?', acao: 'Sair', perigo: true })) return;
             sessao.logado = false;
             salvarSessao();
             closeMenu();
