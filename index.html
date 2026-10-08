@@ -44,6 +44,19 @@
            Fundo preto, uma família tipográfica, botão principal branco e uma
            única cor de destaque. A identidade de cada casa aparece só no logo
            e na imagem — nunca troca fonte nem cor do app inteiro.
+
+           Ritmo
+           - Espaço em passos de 4: 4 · 8 · 12 · 16 · 20 · 24 · 32. Sem meios-passos,
+             exceto gap-0.5 (2px), entrelinha de rótulo empilhado.
+           - Gutter de 16px (px-4) em tudo, inclusive dentro de cartão (p-4) e na
+             legenda sobre imagem (left-4 right-4). Exceção: o onboarding usa 24px,
+             porque é tela imersiva sem barra.
+           - Raios por papel: 28 sheet · 24 herói · 18 cartão e .group-list ·
+             14 caixa aninhada · 12 miniatura · full para pílulas, botões e avatares.
+           - Cabeçalho de aba: linha de 36px (data ou voltar à esquerda, avatar ou
+             ação à direita), h1.t-large e subtítulo t-sub c-2. Entre seções, 32px
+             (space-y-8). Título de seção: secaoHtml (t-title2); t-title3 só dentro
+             de cartão ou folha.
            =================================================================== */
         :root {
             --primary: #ffffff;
@@ -108,7 +121,7 @@
         .card { background: var(--fill-1); border-radius: 18px; }
 
         /* Listas agrupadas com separador recuado */
-        .group-list { background: var(--fill-1); border-radius: 16px; overflow: hidden; }
+        .group-list { background: var(--fill-1); border-radius: 18px; overflow: hidden; }
         .group-list.on-fill { background: var(--fill-2); border-radius: 14px; }
         .row { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-height: 48px; width: 100%; text-align: left; }
         .row:not(.hidden) ~ .row::before { content: ''; position: absolute; top: 0; right: 0; left: var(--inset, 16px); height: 0.5px; background: var(--sep); }
@@ -232,7 +245,6 @@
         .otp { position: relative; display: grid; grid-template-columns: repeat(4, 56px); gap: 12px; justify-content: center; }
         .otp-caixa { height: 64px; border-radius: 14px; background: var(--fill-2); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 600; border: 1.5px solid transparent; transition: border-color 0.15s ease; }
         .otp-caixa.atual { border-color: #ffffff; }
-        .otp-caixa.erro { border-color: var(--danger); }
         .otp input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; font-size: 16px; caret-color: transparent; }
 
         /* Feedback: carregamento e erro em campo. Sob movimento reduzido o spinner fica parado, então sempre vai com texto. */
@@ -342,7 +354,7 @@
 
             <!-- HOJE: uma pergunta só — o que está rolando agora e como eu entro -->
             <section id="tab-hoje-view" class="view-in">
-                <div class="pt-safe px-4 space-y-3.5">
+                <div class="pt-safe px-4 space-y-4">
                     <div class="flex justify-between items-center h-9">
                         <span id="hoje-data" class="t-sub c-2 font-medium"></span>
                         <button onclick="openMenu()" id="avatar-btn" aria-label="Perfil e modo demonstração" class="press relative w-9 h-9 rounded-full bg-[#2c2c2e] flex items-center justify-center t-sub font-semibold"></button>
@@ -359,7 +371,7 @@
                     </label>
                 </div>
 
-                <div id="hoje-conteudo" class="pt-6 space-y-9">
+                <div id="hoje-conteudo" class="pt-6 space-y-8">
                     <!-- Gerado via renderHoje() -->
                 </div>
 
@@ -367,7 +379,7 @@
                      quem abre o app para sair à noite não deve tropeçar em vagas de trabalho. -->
                 <div class="px-4 pt-12">
                     <button onclick="switchTab('freelas')" class="press group-list row" style="min-height: 64px;">
-                        <span class="w-9 h-9 rounded-[10px] bg-[#2c2c2e] flex items-center justify-center shrink-0">
+                        <span class="w-9 h-9 rounded-xl bg-[#2c2c2e] flex items-center justify-center shrink-0">
                             <i data-lucide="briefcase" class="w-[18px] h-[18px]"></i>
                         </span>
                         <span class="flex-1 min-w-0 flex flex-col">
@@ -381,10 +393,13 @@
 
             <!-- AGENDA: todas as casas de um dia, com horário, entrada e promoções -->
             <section id="tab-agenda-view" class="hidden view-in">
-                <div class="pt-safe px-4 space-y-0.5">
-                    <h1 class="t-large pt-3">Agenda</h1>
-                    <p id="agenda-resumo" class="t-sub c-2"></p>
-                    <div class="segmented !mt-3" role="tablist" aria-label="Ver a agenda como">
+                <div class="pt-safe px-4 space-y-4">
+                    <div class="h-9" aria-hidden="true"></div>
+                    <div class="space-y-1">
+                        <h1 class="t-large">Agenda</h1>
+                        <p id="agenda-resumo" class="t-sub c-2"></p>
+                    </div>
+                    <div class="segmented" role="tablist" aria-label="Ver a agenda como">
                         <button type="button" role="tab" id="seg-agenda-lista" onclick="setAgendaModo('lista')">Lista</button>
                         <button type="button" role="tab" id="seg-agenda-mapa" onclick="setAgendaModo('mapa')">Mapa</button>
                     </div>
@@ -394,7 +409,7 @@
                     <!-- Gerado via renderAgenda() -->
                 </div>
                 <div id="agenda-mapa" class="hidden px-4 pt-4">
-                    <div class="mapa-moldura relative card overflow-hidden" style="height: max(380px, calc(100dvh - 330px));">
+                    <div class="mapa-moldura relative card overflow-hidden" style="height: max(380px, calc(100dvh - 376px));">
                         <div id="mapa-agenda" class="absolute inset-0"></div>
                         <button type="button" onclick="centralizarMapaAgenda()" aria-label="Mostrar todas as casas e a minha localização"
                                 class="press glass absolute top-3 right-3 z-[1000] w-10 h-10 rounded-full flex items-center justify-center">
@@ -407,14 +422,15 @@
             </section>
 
             <!-- TELA: TRABALHE NA NOITE (MÓDULO FREELAS) -->
-            <div id="tab-freelas-view" class="pt-safe px-4 space-y-7 hidden">
+            <div id="tab-freelas-view" class="pt-safe px-4 space-y-8 hidden">
                 <!-- Gerado dinamicamente via renderFreelas() -->
             </div>
 
             <!-- INGRESSOS: a carteira de entradas -->
             <section id="tab-ingressos-view" class="hidden view-in">
-                <div class="pt-safe px-4 space-y-3.5">
-                    <h1 class="t-large pt-3">Ingressos</h1>
+                <div class="pt-safe px-4 space-y-4">
+                    <div class="h-9" aria-hidden="true"></div>
+                    <h1 class="t-large">Ingressos</h1>
                     <div class="segmented" role="tablist" aria-label="Filtrar ingressos">
                         <button type="button" role="tab" id="seg-proximos" onclick="setIngressosFiltro('proximos')">Próximos</button>
                         <button type="button" role="tab" id="seg-passados" onclick="setIngressosFiltro('passados')">Passados</button>
@@ -431,7 +447,7 @@
             </div>
 
             <!-- TELA INTERNA: DASHBOARD GERENTE -->
-            <div id="manager-dashboard-view" class="pt-safe px-4 space-y-7 hidden">
+            <div id="manager-dashboard-view" class="pt-safe px-4 space-y-8 hidden">
                 <!-- Gerado dinamicamente -->
             </div>
 
@@ -546,7 +562,7 @@
                             <p id="res-phone-erro" role="alert" class="msg-erro px-4 pb-3 hidden"></p>
                             <div id="res-linha-pessoas" class="row justify-between" style="min-height: 56px;">
                                 <span class="t-body">Pessoas</span>
-                                <div class="flex items-center gap-3.5">
+                                <div class="flex items-center gap-3">
                                     <button type="button" id="res-menos" onclick="alterarPessoas(-1)" aria-label="Menos uma pessoa" class="press stepper"><i data-lucide="minus" class="w-4 h-4"></i></button>
                                     <span id="res-guests-label" aria-live="polite" class="w-6 text-center t-title3">2</span>
                                     <button type="button" id="res-mais" onclick="alterarPessoas(1)" aria-label="Mais uma pessoa" class="press stepper"><i data-lucide="plus" class="w-4 h-4"></i></button>
@@ -559,9 +575,9 @@
                         <!-- Entrada e promoções da noite, calculadas na hora -->
                     </div>
 
-                    <div class="space-y-2.5 pt-2">
+                    <div class="space-y-3 pt-2">
                         <button type="submit" id="res-submit" class="press btn-primary lg w-full">Confirmar</button>
-                        <p id="res-login-nota" class="t-foot c-2 text-center px-4 flex items-center justify-center gap-1.5 hidden">
+                        <p id="res-login-nota" class="t-foot c-2 text-center px-4 flex items-center justify-center gap-2 hidden">
                             <i data-lucide="smartphone" class="w-3.5 h-3.5 shrink-0"></i><span>No próximo passo você entra com seu celular, sem senha.</span>
                         </p>
                         <p id="res-nota" class="t-foot c-3 text-center px-4"></p>
@@ -592,7 +608,7 @@
                 <div class="flex justify-end pt-2">
                     <button onclick="closeMenu()" class="press t-headline c-accent h-11 px-1">OK</button>
                 </div>
-                <div class="flex flex-col items-center gap-1.5 pb-6">
+                <div class="flex flex-col items-center gap-2 pb-6">
                     <div id="menu-avatar" class="w-[72px] h-[72px] rounded-full bg-[#3a3a3c] flex items-center justify-center t-title1 overflow-hidden"></div>
                     <span id="menu-nome" class="t-title2 pt-1"></span>
                     <span id="menu-sub" class="t-sub c-2"></span>
@@ -616,7 +632,7 @@
                                     <button id="seg-logado" role="tab" onclick="definirSessaoDemo(true)">Logado</button>
                                 </div>
                             </div>
-                            <div class="row flex-col items-stretch gap-2.5" style="padding-top: 12px; padding-bottom: 12px;">
+                            <div class="row flex-col items-stretch gap-3" style="padding-top: 12px; padding-bottom: 12px;">
                                 <span class="t-body">Horário</span>
                                 <div class="segmented" role="tablist" aria-label="Simular horário">
                                     <button id="sim-agora" role="tab" onclick="escolherSimulacao('agora')">Agora</button>
@@ -1719,18 +1735,20 @@
             return `<img src="logo-casas/${house.id}.jpg" alt="" class="${classes} rounded-full object-cover bg-[#2c2c2e] shrink-0" onerror="this.style.visibility='hidden'">`;
         }
 
+        // opts: id, sub, acao (à direita do título), semPadding (conteúdo de ponta a ponta),
+        // jaRecuado (a página já tem px-4: nem título nem conteúdo ganham recuo).
         function secaoHtml(tituloSecao, conteudo, opts) {
             opts = opts || {};
             return `
                 <section ${opts.id ? `id="${opts.id}"` : ''} class="space-y-3">
-                    <div class="px-4 flex justify-between items-baseline gap-3">
+                    <div class="${opts.jaRecuado ? '' : 'px-4 '}flex justify-between items-baseline gap-3">
                         <div class="min-w-0">
                             <h2 class="t-title2">${tituloSecao}</h2>
                             ${opts.sub ? `<p class="t-sub c-2">${opts.sub}</p>` : ''}
                         </div>
                         ${opts.acao || ''}
                     </div>
-                    ${opts.semPadding ? conteudo : `<div class="px-4">${conteudo}</div>`}
+                    ${opts.semPadding || opts.jaRecuado ? conteudo : `<div class="px-4">${conteudo}</div>`}
                 </section>`;
         }
 
@@ -1878,8 +1896,8 @@
                             ${chipEsq}
                             <span class="glass chip-glass font-medium">${chipDir}</span>
                         </div>
-                        <div class="absolute left-5 right-5 bottom-5 flex flex-col gap-3.5 pointer-events-none">
-                            <div class="flex flex-col gap-1.5">
+                        <div class="absolute left-4 right-4 bottom-5 flex flex-col gap-3 pointer-events-none">
+                            <div class="flex flex-col gap-2">
                                 <div class="flex items-center gap-2 min-w-0">
                                     ${logoHtml(house, 'w-6 h-6')}
                                     <span class="t-foot font-semibold c-1b truncate">${nomeCasa(house)} · ${generos}</span>
@@ -1903,7 +1921,7 @@
             const quando = st.estado === 'agora' ? `até ${fmtHora(st.fim)}` : `às ${fmtHora(st.inicio)}`;
             return `
                 <button onclick="openHouseDetail('${house.id}', '${st.prog.id}')" class="press shrink-0 w-[200px] text-left flex flex-col gap-2">
-                    <span class="relative block rail-capa rounded-2xl overflow-hidden">
+                    <span class="relative block rail-capa rounded-[18px] overflow-hidden">
                         ${midiaHtml(house, 'absolute inset-0')}
                         <span class="glass chip-glass absolute top-2.5 right-2.5">${ent.badge || ent.curto}</span>
                     </span>
@@ -1919,7 +1937,7 @@
                 const ent = infoEntrada(st.prog, st.occ, ref);
                 const quando = comDia ? `${diaRelativo(st.inicio, ref)} · ${fmtHora(st.inicio)}` : fmtHora(st.inicio);
                 return `
-                    <button onclick="openHouseDetail('${house.id}', '${st.prog.id}')" class="press w-full flex items-center gap-3.5 text-left">
+                    <button onclick="openHouseDetail('${house.id}', '${st.prog.id}')" class="press w-full flex items-center gap-3 text-left">
                         ${midiaHtml(house, 'w-[60px] h-[60px] rounded-xl shrink-0', 'thumb')}
                         <span class="flex-1 min-w-0 flex flex-col gap-0.5">
                             <span class="t-callout font-semibold truncate">${nomeNoite(st.prog)}</span>
@@ -2002,7 +2020,7 @@
 
             if (!achou.length) {
                 return `
-                    <div class="px-4 pt-10 text-center space-y-1">
+                    <div class="px-4 py-8 text-center space-y-1">
                         <p class="t-headline">Nada encontrado</p>
                         <p class="t-sub c-2">Nenhuma casa ou festa com “${escHtml(termo)}”.</p>
                     </div>`;
@@ -2018,7 +2036,7 @@
                         : `${diaRelativo(st.inicio, ref)} às ${fmtHora(st.inicio)} · ${nomeNoite(st.prog)}`;
                 }
                 return `
-                    <button onclick="openHouseDetail('${house.id}')" class="press w-full flex items-center gap-3.5 text-left">
+                    <button onclick="openHouseDetail('${house.id}')" class="press w-full flex items-center gap-3 text-left">
                         ${midiaHtml(house, 'w-[60px] h-[60px] rounded-xl shrink-0', 'thumb')}
                         <span class="flex-1 min-w-0 flex flex-col gap-0.5">
                             <span class="t-callout font-semibold truncate">${nomeCasa(house)}</span>
@@ -2169,7 +2187,7 @@
             const generos = house.especialidade.split(',').slice(0, 2).map(s => s.trim()).join(', ');
 
             let status;
-            if (estado === 'agora') status = `<span class="t-foot font-semibold c-live flex items-center gap-1.5 shrink-0"><span class="dot pulse"></span>Agora</span>`;
+            if (estado === 'agora') status = `<span class="t-foot font-semibold c-live flex items-center gap-2 shrink-0"><span class="dot pulse"></span>Agora</span>`;
             else if (estado === 'encerrada') status = `<span class="t-foot c-3 shrink-0">Encerrou</span>`;
             else if (mesmoDia(occ.inicio, ref) && (occ.inicio - ref) <= 7200000) status = `<span class="t-foot font-semibold c-accent shrink-0">em ${fmtDuracao(Math.round((occ.inicio - ref) / 60000))}</span>`;
             else status = `<span class="t-foot font-semibold shrink-0">${fmtHora(occ.inicio)}</span>`;
@@ -2177,11 +2195,11 @@
             const detalheEntrada = estado === 'agora' ? ent.detalheCurto : (ent.detalheCurto || '').replace(/^faltam [^·]+· /, '');
 
             const promosHtml = (valendo.length || encerradas) ? `
-                <div class="border-t-[0.5px] border-white/10 mx-3.5 py-2.5 space-y-2">
+                <div class="border-t-[0.5px] border-white/10 mx-4 py-3 space-y-2">
                     ${valendo.map(({ promo, st }) => {
                         const t = tempoPromoAgenda(promo, st, estado);
                         return `
-                            <div class="flex items-center gap-2.5">
+                            <div class="flex items-center gap-3">
                                 <i data-lucide="${iconePromo(promo)}" class="w-4 h-4 c-accent shrink-0"></i>
                                 <span class="t-foot flex-1 min-w-0 truncate">${promo.nome}</span>
                                 <span class="t-foot shrink-0 ${t.classe}">${t.texto}</span>
@@ -2193,7 +2211,7 @@
             return `
                 <button type="button" onclick="openHouseDetail('${house.id}', '${prog.id}')"
                    class="press block w-full text-left card overflow-hidden ${estado === 'encerrada' ? 'opacity-50' : ''}">
-                    <div class="flex gap-3.5 p-3.5">
+                    <div class="flex gap-3 p-4">
                         ${midiaHtml(house, 'w-[72px] h-[72px] rounded-xl shrink-0', 'thumb')}
                         <div class="flex-1 min-w-0 flex flex-col">
                             <div class="flex items-center justify-between gap-2">
@@ -2257,7 +2275,7 @@
                 const ativo = sel === agendaDia;
                 return `
                     <button onclick="selecionarDiaAgenda('${sel}')" aria-pressed="${ativo}"
-                            class="press shrink-0 rounded-2xl px-3.5 py-2 min-w-[76px] flex flex-col items-start ${ativo ? 'bg-white text-black' : 'bg-[var(--fill-1)] text-white'}">
+                            class="press shrink-0 rounded-full px-4 py-2 min-w-[76px] flex flex-col items-center ${ativo ? 'bg-white text-black' : 'bg-[var(--fill-1)] text-white'}">
                         <span class="t-sub font-semibold whitespace-nowrap">${rotuloChipAgenda(sel, ref)}</span>
                         <span class="t-foot ${ativo ? 'text-black/60' : 'c-2'}">${casas ? `${casas} ${casas === 1 ? 'casa' : 'casas'}` : 'nada'}</span>
                     </button>`;
@@ -3010,7 +3028,7 @@
             }
 
             c.innerHTML = `
-                <div class="glass rounded-[18px] p-3 space-y-3 shadow-2xl">
+                <div class="glass rounded-[18px] p-4 space-y-3 shadow-2xl">
                     <button type="button" onclick="openHouseDetail('${house.id}'${prog ? `, '${prog.id}'` : ''})" class="press w-full flex gap-3 text-left">
                         ${midiaHtml(house, 'w-16 h-16 rounded-xl shrink-0', 'thumb')}
                         <span class="flex-1 min-w-0 flex flex-col">
@@ -3021,7 +3039,7 @@
                         </span>
                         <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0 self-center"></i>
                     </button>
-                    <p class="t-foot c-2 flex items-center gap-1.5">
+                    <p class="t-foot c-2 flex items-center gap-2">
                         <i data-lucide="map-pin" class="w-3.5 h-3.5 shrink-0"></i>
                         ${t ? t.texto : (origemTipo === 'pedindo' ? 'Calculando distância…' : escHtml(house.endereco || house.setor))}
                         ${t && rotaStatus.id === house.id && rotaStatus.fase ? `<span class="c-3">· ${rotaStatus.fase === 'tracando' ? 'Traçando rota…' : 'estimativa'}</span>` : ''}
@@ -3043,28 +3061,22 @@
 
         function comoChegarHtml(house) {
             if (!house.geo) {
-                return `
-                    <section class="space-y-2.5">
-                        <h2 class="t-title3">Onde é</h2>
-                        <div class="group-list px-4 py-3.5">
+                return secaoHtml('Onde é', `
+                        <div class="group-list px-4 py-4">
                             <p class="t-sub c-2">O local muda a cada edição. A produtora divulga o endereço no Instagram.</p>
-                        </div>
-                    </section>`;
+                        </div>`, { jaRecuado: true });
             }
-            return `
-                <section class="space-y-2.5">
-                    <h2 class="t-title3">Como chegar</h2>
+            return secaoHtml('Como chegar', `
                     <div class="mapa-moldura card overflow-hidden">
                         <div id="mapa-casa" class="h-[160px]"></div>
-                        <div class="px-4 py-3.5 space-y-3">
+                        <div class="p-4 space-y-3">
                             <div class="space-y-0.5">
                                 <p class="t-callout font-semibold">${escHtml(house.endereco || house.setor)}</p>
                                 <p id="casa-distancia" class="t-foot c-2">${distanciaCasaHtml(house)}</p>
                             </div>
                             <div class="flex gap-2">${botoesRotaHtml(house)}</div>
                         </div>
-                    </div>
-                </section>`;
+                    </div>`, { jaRecuado: true });
         }
 
         function montarMapaCasa(house, estado) {
@@ -3221,9 +3233,9 @@
                 if (st.estado !== 'agora' && st.emMin <= 720) comeca = `<p class="t-sub c-accent">Começa em ${fmtDuracao(st.emMin)}</p>`;
 
                 noiteHtml = `
-                    <section class="space-y-2.5">
+                    <section class="space-y-3">
                         <p class="t-cap c-2">${rotuloDataNoite(st.inicio, ref)}</p>
-                        <div class="card px-4 py-[18px] space-y-4">
+                        <div class="card p-4 space-y-4">
                             <div class="space-y-1">
                                 <h2 class="t-title2">${nomeNoite(prog)}</h2>
                                 <p class="t-sub c-2">${fmtHora(st.inicio)} – ${fmtHora(st.fim)}</p>
@@ -3239,15 +3251,13 @@
                         </div>
                     </section>
 
-                    ${promos.length ? `
-                    <section class="space-y-2.5">
-                        <h2 class="t-title3">${!ehHoje ? 'Promoções da noite' : promos.some(x => x.st.estado !== 'expirada') ? 'Valendo hoje' : 'Promoções de hoje'}</h2>
+                    ${promos.length ? secaoHtml(!ehHoje ? 'Promoções da noite' : promos.some(x => x.st.estado !== 'expirada') ? 'Valendo hoje' : 'Promoções de hoje', `
                         <div class="group-list">
                             ${promos.map(({ promo, st: pst }) => {
                                 const t = tempoPromo(promo, pst);
                                 return `
                                     <div class="row ${pst.estado === 'expirada' ? 'opacity-40' : ''}" style="--inset: 64px;">
-                                        <span class="w-9 h-9 rounded-[10px] bg-[#2c2c2e] flex items-center justify-center shrink-0 c-accent">
+                                        <span class="w-9 h-9 rounded-xl bg-[#2c2c2e] flex items-center justify-center shrink-0 c-accent">
                                             <i data-lucide="${iconePromo(promo)}" class="w-5 h-5"></i>
                                         </span>
                                         <span class="flex-1 min-w-0 flex flex-col gap-0.5">
@@ -3257,14 +3267,11 @@
                                         <span class="t-foot shrink-0 text-right ${t.classe}">${t.texto}</span>
                                     </div>`;
                             }).join('')}
-                        </div>
-                    </section>` : ''}`;
+                        </div>`, { jaRecuado: true }) : ''}`;
             }
 
             const outras = agenda.filter(s => !st || s.prog.id !== st.prog.id);
-            const outrasHtml = outras.length ? `
-                <section class="space-y-2.5">
-                    <h2 class="t-title3">Outras noites</h2>
+            const outrasHtml = outras.length ? secaoHtml('Outras noites', `
                     <div class="group-list">
                         ${outras.map(s => `
                             <button onclick="openHouseDetail('${house.id}', '${s.prog.id}')" class="press row" style="--inset: 74px;">
@@ -3278,32 +3285,28 @@
                                 </span>
                                 <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0"></i>
                             </button>`).join('')}
-                    </div>
-                </section>` : '';
+                    </div>`, { jaRecuado: true }) : '';
 
-            const vibesHtml = house.videoUrl ? `
-                <section class="space-y-2.5">
-                    <h2 class="t-title3">Vibes</h2>
+            const vibesHtml = house.videoUrl ? secaoHtml('Vibes', `
                     <button onclick="abrirVibesDaCasa('${house.id}')" aria-label="Ver o vídeo de ${escHtml(nomeCasa(house))}" class="press relative block w-[120px] h-[212px] rounded-[14px] overflow-hidden">
                         ${midiaHtml(house, 'absolute inset-0')}
                         <span class="glass absolute left-2.5 bottom-2.5 w-[30px] h-[30px] rounded-full flex items-center justify-center">
                             <i data-lucide="play" class="w-3 h-3 fill-white"></i>
                         </span>
-                    </button>
-                </section>` : '';
+                    </button>`, { jaRecuado: true }) : '';
 
             if (mapaCasa) { mapaCasa.remove(); mapaCasa = null; }
             view.innerHTML = `
                 <div class="relative capa-alt">
                     ${midiaHtml(house, 'absolute inset-0')}
                     <div class="absolute inset-0 scrim-casa"></div>
-                    <div class="absolute left-4 right-4 bottom-5 flex flex-col gap-2.5">
+                    <div class="absolute left-4 right-4 bottom-5 flex flex-col gap-3">
                         ${logoHtml(house, 'w-[52px] h-[52px] border-2 border-white/20')}
                         <h1 class="t-large">${nomeCasa(house)}</h1>
                         <p class="t-sub c-1b">${house.especialidade} · ${house.setor}</p>
                     </div>
                 </div>
-                <div class="px-4 pt-2 pb-16 space-y-7">
+                <div class="px-4 pt-2 pb-16 space-y-8">
                     <p class="t-sub flex items-center gap-2">${status}</p>
                     ${noiteHtml}
                     ${vibesHtml}
@@ -3660,7 +3663,7 @@
         // Vazio de tela inteira: círculo com ícone, título, texto e ação opcional.
         function vazioHtml({ icone, titulo, texto, acaoHtml = '' }) {
             return `
-                    <div class="pt-10 pb-4 flex flex-col items-center text-center gap-2">
+                    <div class="py-8 flex flex-col items-center text-center gap-2">
                         <span class="w-14 h-14 rounded-full bg-[var(--fill-1)] flex items-center justify-center mb-2"><i data-lucide="${icone}" class="w-6 h-6 c-2"></i></span>
                         <p class="t-headline">${titulo}</p>
                         <p class="t-sub c-2 max-w-[280px]">${texto}</p>
@@ -3671,7 +3674,7 @@
         // Vazio dentro de uma seção: caixa agrupada com texto; título e ação opcionais.
         function vazioCompactoHtml(texto, { titulo = '', acaoHtml = '' } = {}) {
             return `
-                    <div class="group-list px-4 ${titulo ? 'py-8 space-y-1' : 'py-6 space-y-2'} text-center">
+                    <div class="group-list px-4 py-8 ${titulo ? 'space-y-1' : 'space-y-2'} text-center">
                         ${titulo ? `<p class="t-headline">${titulo}</p>` : ''}
                         <p class="t-sub c-2">${texto}</p>
                         ${acaoHtml}
@@ -3775,19 +3778,19 @@
             const casa = house ? nomeCasa(house) : titulo(r.houseName);
 
             return `
-                <article class="card rounded-[22px] overflow-hidden ${passou ? 'opacity-60' : ''}">
+                <article class="card overflow-hidden ${passou ? 'opacity-60' : ''}">
                     <div class="relative h-24">
                         ${house ? midiaHtml(house, 'absolute inset-0') : ''}
                         <div class="absolute inset-0 bg-black/55"></div>
                         <div class="absolute inset-0 px-4 flex items-center justify-between gap-3">
-                            <span class="flex items-center gap-2.5 min-w-0">
+                            <span class="flex items-center gap-3 min-w-0">
                                 ${house ? logoHtml(house, 'w-9 h-9') : ''}
                                 <span class="t-headline truncate">${casa}</span>
                             </span>
                             ${chip}
                         </div>
                     </div>
-                    <div class="px-4 pt-4 space-y-3.5">
+                    <div class="px-4 pt-4 space-y-4">
                         <h3 class="t-title2">${nomeEvento}</h3>
                         <div class="grid grid-cols-3 gap-2">
                             <div class="min-w-0"><p class="t-cap c-2">DATA</p><p class="t-sub font-semibold truncate">${quando}</p></div>
@@ -3798,7 +3801,7 @@
                     </div>
                     ${cancelada ? '<div class="h-4"></div>' : `
                     <div class="mt-4 border-t-[1.5px] border-dashed border-[#3a3a3c]"></div>
-                    <div class="px-4 pt-5 pb-4 flex flex-col items-center gap-2.5">
+                    <div class="px-4 pt-5 pb-4 flex flex-col items-center gap-3">
                         <div class="p-3 rounded-[14px] bg-white">${qrSvg(payloadIngresso(r))}</div>
                         <p class="t-foot c-2">Mostre na portaria · ${mesa ? `vale para ${rotuloPessoas(r.guestsCount)}` : 'vale uma entrada'}</p>
                         <p class="mono t-foot c-3 tracking-widest">${codigoPortaria(r)}</p>
@@ -3854,7 +3857,7 @@
                     texto: 'Quando você entrar numa lista, o ingresso aparece aqui com o QR da portaria.'
                 })}
                     ${sugestao ? `
-                    <p class="t-cap c-2 px-1 pt-4">Rolando hoje</p>
+                    <p class="t-cap c-2 px-4 pt-4">Rolando hoje</p>
                     <button onclick="openHouseDetail('${sugestao.house.id}', '${sugestao.st.prog.id}')" class="press group-list row" style="min-height: 76px;">
                         ${midiaHtml(sugestao.house, 'w-[52px] h-[52px] rounded-xl shrink-0', 'thumb')}
                         <span class="flex-1 min-w-0 flex flex-col gap-0.5">
@@ -3864,7 +3867,7 @@
                         <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0"></i>
                     </button>` : ''}`;
             } else {
-                lista.innerHTML = `<p class="t-sub c-2 text-center pt-12">Nenhuma noite passada ainda.</p>`;
+                lista.innerHTML = `<p class="t-sub c-2 text-center py-8">Nenhuma noite passada ainda.</p>`;
             }
             lucide.createIcons();
         }
@@ -4395,7 +4398,7 @@
                         ${midiaHtml(house, 'absolute inset-0')}
                         <div class="absolute inset-0 scrim-hero"></div>
                         <div class="absolute top-4 left-4">${chip}</div>
-                        <div class="absolute left-5 right-5 bottom-5 flex flex-col gap-1.5">
+                        <div class="absolute left-4 right-4 bottom-5 flex flex-col gap-2">
                             <div class="flex items-center gap-2 min-w-0">
                                 ${logoHtml(house, 'w-6 h-6')}
                                 <span class="t-foot font-semibold c-1b truncate">${nomeCasa(house)}</span>
@@ -4431,8 +4434,8 @@
             const casaPasse = destaque ? destaque.house : housesData[0];
             const noitePasse = destaque ? destaque.st : null;
             const visualPasse = `
-                <article class="w-full max-w-[290px] card rounded-[22px] overflow-hidden">
-                    <div class="px-4 pt-4 flex items-center gap-2.5">
+                <article class="w-full max-w-[290px] card overflow-hidden">
+                    <div class="px-4 pt-4 flex items-center gap-3">
                         ${logoHtml(casaPasse, 'w-8 h-8')}
                         <span class="t-headline truncate flex-1">${nomeCasa(casaPasse)}</span>
                         <span class="chip-glass chip-live"><i data-lucide="check" class="w-3 h-3"></i>Na lista</span>
@@ -4818,12 +4821,14 @@
             const subtitulo = { painel: 'Painel da casa', lista: 'Lista da portaria', qr: 'Ler QR da entrada', equipe: 'Equipe da noite' }[abaGerente];
 
             view.innerHTML = `
-                <div class="flex items-end justify-between gap-3">
-                    <div class="min-w-0">
-                        <p class="t-sub c-2">${subtitulo}</p>
-                        <h1 class="t-large truncate">${nomeCasa(house)}</h1>
+                <div class="space-y-4">
+                    <div class="flex justify-end items-center h-9">
+                        <button onclick="exitManagerMode()" class="press btn-secondary shrink-0">Sair</button>
                     </div>
-                    <button onclick="exitManagerMode()" class="press btn-secondary shrink-0 mb-1">Sair</button>
+                    <div class="space-y-1">
+                        <h1 class="t-large truncate">${nomeCasa(house)}</h1>
+                        <p class="t-sub c-2">${subtitulo}</p>
+                    </div>
                 </div>
                 ${conteudo}
             `;
@@ -4988,7 +4993,7 @@
                 </section>`;
 
             return `
-                <div class="relative aspect-square card rounded-[22px] overflow-hidden">
+                <div class="relative aspect-square card overflow-hidden">
                     <video id="qr-video" playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
                     <div class="absolute inset-[18%] rounded-[18px] border-2 border-white/80 pointer-events-none"></div>
                     <p id="qr-status" class="absolute inset-x-0 bottom-0 p-3 text-center t-foot c-2 bg-black/50">Abrindo a câmera…</p>
@@ -5258,7 +5263,7 @@
                 .map(({ v, ctx }) => {
                     const esc = escalaDaVaga(v.id);
                     const acao = esc
-                        ? `<span class="t-sub font-semibold c-live flex items-center gap-1.5 shrink-0"><i data-lucide="check" class="w-4 h-4"></i>Escalado</span>`
+                        ? `<span class="t-sub font-semibold c-live flex items-center gap-2 shrink-0"><i data-lucide="check" class="w-4 h-4"></i>Escalado</span>`
                         : `<button onclick="openVagaModal('${v.id}')" class="press btn-primary sm shrink-0">Ver termos</button>`;
                     return `
                         <article class="card p-4 space-y-4 ${esc ? 'opacity-60' : ''}">
@@ -5284,12 +5289,14 @@
                 }).join('') || vazioCompactoHtml('Nenhuma vaga para essa função agora.');
 
             view.innerHTML = `
-                <div class="space-y-3">
+                <div class="space-y-4">
                     <button onclick="switchTab('hoje')" class="press flex items-center gap-0.5 h-9 -ml-1.5 t-body c-accent">
                         <i data-lucide="chevron-left" class="w-6 h-6"></i><span>Hoje</span>
                     </button>
-                    <h1 class="t-large">Trabalhe na noite</h1>
-                    <p class="t-sub c-2">Vagas de freela nas casas parceiras. Termos claros, contrato assinado no app e pagamento combinado antes do turno.</p>
+                    <div class="space-y-1">
+                        <h1 class="t-large">Trabalhe na noite</h1>
+                        <p class="t-sub c-2">Vagas de freela nas casas parceiras. Termos claros, contrato assinado no app e pagamento combinado antes do turno.</p>
+                    </div>
                 </div>
 
                 <div class="group-list row" style="min-height: 72px;">
@@ -5331,7 +5338,7 @@
                 .map(({ e, ctx }) => {
                     const idx = ESCALA_ETAPAS.findIndex(s => s.id === e.status);
                     const etapas = ESCALA_ETAPAS.map((s, i) => `
-                        <div class="flex-1 space-y-1.5">
+                        <div class="flex-1 space-y-2">
                             <div class="h-1 rounded-full ${i <= idx ? 'bg-white' : 'bg-[#3a3a3c]'}"></div>
                             <p class="text-[11px] leading-4 ${i <= idx ? 'text-white font-semibold' : 'c-3'}">${s.label}</p>
                         </div>`).join('');
@@ -5361,7 +5368,7 @@
                                 </div>
                                 <button onclick="openVagaModal('${ctx.vaga.id}', 'assinado')" class="press btn-secondary shrink-0">Contrato</button>
                             </div>
-                            <div class="flex gap-1.5">${etapas}</div>
+                            <div class="flex gap-2">${etapas}</div>
                             ${rodape}
                         </article>`;
                 }).join('');
@@ -5421,7 +5428,7 @@
                 </div>`;
 
             const caixaContrato = (titulo_) => `
-                <div class="rounded-[14px] bg-[#2c2c2e] p-4 max-h-56 overflow-y-auto no-scrollbar space-y-2.5 t-foot c-1b">
+                <div class="rounded-[14px] bg-[#2c2c2e] p-4 max-h-56 overflow-y-auto no-scrollbar space-y-3 t-foot c-1b">
                     ${titulo_ ? `<p class="t-cap c-2">${titulo_}</p>` : ''}
                     ${textoContrato(vaga, house, ctx.inicio, ctx.fim)}
                 </div>`;
@@ -5453,7 +5460,7 @@
                                     </div>`).join('')}
                             </div>
                         </div>
-                        <div class="space-y-1.5 px-4 t-foot c-2">
+                        <div class="space-y-2 px-4 t-foot c-2">
                             <p><span class="text-white font-semibold">Tributos:</span> contratação como MEI, sem retenção na fonte. Você emite a nota fiscal depois do turno.</p>
                             <p><span class="text-white font-semibold">Cancelamento:</span> sem custo até 24h antes do início.</p>
                         </div>
@@ -5576,13 +5583,9 @@
             const publicadas = vagasData.filter(v => v.houseId === houseId).length;
 
             if (daCasa.length === 0) {
-                return `
-                    <section class="space-y-2.5">
-                        <h2 class="t-title3">Equipe freela</h2>
-                        ${vazioCompactoHtml(`Nenhum freela escalado. ${publicadas} ${publicadas === 1 ? 'vaga publicada' : 'vagas publicadas'}.`, {
-                            acaoHtml: publicadas ? `<button onclick="switchTab('freelas')" class="press link-44 !-mt-1 !-mb-3 t-sub c-accent">Ver como o freela vê</button>` : ''
-                        })}
-                    </section>`;
+                return secaoHtml('Equipe freela', vazioCompactoHtml(`Nenhum freela escalado. ${publicadas} ${publicadas === 1 ? 'vaga publicada' : 'vagas publicadas'}.`, {
+                    acaoHtml: publicadas ? `<button onclick="switchTab('freelas')" class="press link-44 !-mt-1 !-mb-3 t-sub c-accent">Ver como o freela vê</button>` : ''
+                }), { jaRecuado: true });
             }
 
             const linhas = daCasa.map(({ e, ctx }) => {
@@ -5624,12 +5627,9 @@
                     </div>
                 </div>`;
 
-            return `
-                <section class="space-y-2.5">
-                    <h2 class="t-title3">Equipe freela</h2>
+            return secaoHtml('Equipe freela', `
                     <div class="group-list">${linhas}</div>
-                    ${fechamento}
-                </section>`;
+                    ${fechamento}`, { jaRecuado: true });
         }
 
         async function registrarTurno(escId, tipo, botao) {
@@ -5718,7 +5718,7 @@
                         </button>
                     </div>
 
-                    <div class="absolute vibes-safe-bottom inset-x-0 px-5 z-40 flex flex-col gap-4">
+                    <div class="absolute vibes-safe-bottom inset-x-0 px-safe z-40 flex flex-col gap-4">
                         <div class="flex flex-col gap-2">
                             <div class="flex items-center gap-2 min-w-0">
                                 ${logoHtml(house, 'w-7 h-7')}
@@ -5728,7 +5728,7 @@
                             <h3 class="t-title1">${nomeNoite(prog)}</h3>
                             <p class="t-sub c-1b max-w-[90%]">${prog.descricao}</p>
                             ${prog.djs ? `
-                            <p class="flex items-center gap-1.5 t-foot c-1b min-w-0">
+                            <p class="flex items-center gap-2 t-foot c-1b min-w-0">
                                 <i data-lucide="music" class="w-3.5 h-3.5 shrink-0"></i>
                                 <span class="truncate">${titulo(prog.djs)}</span>
                             </p>` : ''}
@@ -5767,7 +5767,7 @@
                 <img src="${video.getAttribute('poster')}" alt="" class="absolute inset-0 w-full h-full object-cover opacity-60" onerror="this.remove()">
                 <div class="relative flex flex-col items-center gap-3">
                     ${house ? logoHtml(house, 'w-20 h-20') : ''}
-                    <span class="t-foot c-1b flex items-center gap-1.5"><i data-lucide="video-off" class="w-4 h-4"></i>Vídeo indisponível</span>
+                    <span class="t-foot c-1b flex items-center gap-2"><i data-lucide="video-off" class="w-4 h-4"></i>Vídeo indisponível</span>
                 </div>`;
             video.replaceWith(aviso);
             card.querySelector('.vibe-carregando')?.remove();
