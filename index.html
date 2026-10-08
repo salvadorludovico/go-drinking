@@ -2487,15 +2487,30 @@
             return estilo;
         }
 
+        // Camada "Carregando mapa…" sobre o mapa até o primeiro desenho da base.
+        // Teto de 6 s: passado isso some sem erro (a base Esri cobre a falha do estilo).
+        function camadaCarregandoMapa(mapa) {
+            const camada = document.createElement('div');
+            camada.className = 'mapa-carregando glass absolute inset-0 flex items-center justify-center gap-2 t-foot c-2 pointer-events-none';
+            camada.style.zIndex = 1000;
+            camada.setAttribute('role', 'status');
+            camada.innerHTML = '<span class="spinner" aria-hidden="true"></span>Carregando mapa…';
+            mapa.getContainer().appendChild(camada);
+            const sumir = () => { clearTimeout(teto); camada.remove(); };
+            const teto = setTimeout(sumir, 6000);
+            return sumir;
+        }
+
         function criarMapaBase(elemento, opcoes) {
             const mapa = L.map(elemento, Object.assign({ zoomControl: false, attributionControl: false }, opcoes || {}));
+            const pronto = camadaCarregandoMapa(mapa);
             const usarEsri = () => {
                 if (mapa._removido) return;
                 // Reserva: base cinza-escura da Esri, sem chave. (A CARTO passou a exigir.)
                 const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
                 L.tileLayer(esri + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
                     maxZoom: 16, attribution: 'Mapa © <a href="https://www.esri.com">Esri</a>, OpenStreetMap e colaboradores'
-                }).addTo(mapa);
+                }).on('load', pronto).addTo(mapa);
                 L.tileLayer(esri + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(mapa);
             };
             mapa.on('unload', () => { mapa._removido = true; });
@@ -2503,10 +2518,11 @@
                 carregarEstiloNoturno()
                     .then(estilo => {
                         if (mapa._removido) return;
-                        L.maplibreGL({
+                        const base = L.maplibreGL({
                             style: JSON.parse(JSON.stringify(estilo)),
                             attribution: '© <a href="https://openfreemap.org">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                         }).addTo(mapa);
+                        base.getMaplibreMap().once('load', pronto);
                     })
                     .catch(usarEsri);
             } else {
@@ -2717,6 +2733,7 @@
         // Linha ilustrativa (não é o trajeto real pelas ruas): uma curva suave da
         // origem até a casa, tracejada e "andando" em direção ao bar.
         let rotaPedido = 0;
+        let rotaStatus = { id: null, fase: null };   // fase 'tracando' | 'estimativa' | null, mostrada no cartão do pino
 
         function desenharRota(house, enquadrar) {
             if (!camadaRota) return false;
@@ -2728,16 +2745,24 @@
             const aindaVale = () => pedido === rotaPedido && pinoSelecionado === house.id && currentTab === 'agenda' && agendaModo === 'mapa';
 
             const tinhaReal = !!rotasReais[chaveRota(o, house)];
+            rotaStatus = { id: house.id, fase: tinhaReal ? null : 'tracando' };
+            if (!tinhaReal) mostrarCartaoMapa(house.id);
             buscarRotaReal(house)
                 .then(rota => {
                     if (!aindaVale()) return;
+                    rotaStatus = { id: house.id, fase: null };
                     tracarLinha(house, a, b, rota.pontos, enquadrar);
                     if (!tinhaReal) {             // minutos e distância reais no pino e no cartão
                         desenharPinos();
                         mostrarCartaoMapa(house.id);
                     }
                 })
-                .catch(() => { if (aindaVale()) tracarLinha(house, a, b, arco(a, b), enquadrar); });
+                .catch(() => {
+                    if (!aindaVale()) return;
+                    rotaStatus = { id: house.id, fase: 'estimativa' };
+                    tracarLinha(house, a, b, arco(a, b), enquadrar);
+                    mostrarCartaoMapa(house.id);
+                });
             if (enquadrar) mapaAgenda.fitBounds([a, b], { paddingTopLeft: [56, 56], paddingBottomRight: [56, 230], maxZoom: 15 });
             return true;
         }
@@ -2937,6 +2962,7 @@
                     <p class="t-foot c-2 flex items-center gap-1.5">
                         <i data-lucide="map-pin" class="w-3.5 h-3.5 shrink-0"></i>
                         ${t ? t.texto : (origemTipo === 'pedindo' ? 'Calculando distância…' : escHtml(house.endereco || house.setor))}
+                        ${t && rotaStatus.id === house.id && rotaStatus.fase ? `<span class="c-3">· ${rotaStatus.fase === 'tracando' ? 'Traçando rota…' : 'estimativa'}</span>` : ''}
                     </p>
                     <div class="flex gap-2">${botoesRotaHtml(house)}</div>
                 </div>`;
@@ -3272,8 +3298,13 @@
             const url = `${location.href.split('?')[0]}?casa=${house.id}`;
             if (navigator.share) {
                 navigator.share({ title: nomeCasa(house), url }).catch(() => { /* cancelado */ });
-            } else if (navigator.clipboard) {
-                navigator.clipboard.writeText(url).then(() => showSuccessToast('Link copiado'));
+            } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(
+                    () => mostrarToast('Link copiado', { tipo: 'neutro' }),
+                    () => mostrarToast('Não deu para compartilhar neste navegador.', { tipo: 'erro' })
+                );
+            } else {
+                mostrarToast('Não deu para compartilhar neste navegador.', { tipo: 'erro' });
             }
         }
 
@@ -4575,6 +4606,7 @@
                 card.addEventListener('click', (e) => {
                     // Ignore clicks on actionable items like buttons or svg icons
                     if (e.target.closest('button') || e.target.closest('a')) return;
+                    if (!video.isConnected) return;   // vídeo indisponível: nada para pausar
                     
                     if (video.paused) {
                         video.play().catch(err => console.log("Play blocked: ", err));
@@ -5524,6 +5556,7 @@
 
             // Filtra as casas do banco de dados que possuem um vídeo associado
             const videoHouses = housesData.filter(h => h.videoUrl);
+            let cartoes = 0;
 
             videoHouses.forEach((house, index) => {
                 const stVibe = noiteEmDestaque(house, ref);          // a noite que está rolando ou a próxima
@@ -5547,7 +5580,14 @@
                            loop muted playsinline webkit-playsinline disablepictureinpicture
                            preload="${index === 0 ? 'auto' : 'none'}"
                            poster="logo-casas/${house.id}-poster.jpg"
-                           src="logo-casas/${house.id}.mp4"></video>
+                           src="logo-casas/${house.id}.mp4"
+                           onerror="vibeIndisponivel(this)"
+                           onwaiting="vibeCarregando(this, true)" onplaying="vibeCarregando(this, false)"
+                           oncanplay="vibeCarregando(this, false)" onpause="vibeCarregando(this, false)"></video>
+                    <div class="vibe-carregando hidden absolute inset-0 z-30 pointer-events-none flex-col items-center justify-center gap-3" role="status">
+                        <span class="spinner lg" aria-hidden="true"></span>
+                        <span class="t-foot c-1b">Carregando…</span>
+                    </div>
 
                     <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.92) 100%);"></div>
 
@@ -5584,8 +5624,45 @@
                     </div>
                 `;
                 container.appendChild(card);
+                cartoes++;
             });
+            if (!cartoes) {
+                container.innerHTML = `<div class="h-full flex items-center justify-center px-6">${vazioHtml({
+                    icone: 'video-off',
+                    titulo: 'Nenhum vídeo hoje',
+                    texto: 'As casas publicam os vídeos da noite por aqui.',
+                    acaoHtml: `<button type="button" onclick="switchTab('agenda')" class="press btn-secondary mt-3">Ver agenda</button>`
+                })}</div>`;
+            }
             lucide.createIcons();
+        }
+
+        // Vídeo do Vibes que não carrega: o cartão fica com o poster, a logo e o aviso, sem controles de mídia.
+        function vibeIndisponivel(video) {
+            const card = video.closest('.vibes-card');
+            if (!card) return;
+            const house = housesData.find(h => h.id === card.getAttribute('data-house'));
+            const aviso = document.createElement('div');
+            aviso.className = 'absolute inset-0 flex flex-col items-center justify-center gap-3 pb-40';
+            aviso.innerHTML = `
+                <img src="${video.getAttribute('poster')}" alt="" class="absolute inset-0 w-full h-full object-cover opacity-60" onerror="this.remove()">
+                <div class="relative flex flex-col items-center gap-3">
+                    ${house ? logoHtml(house, 'w-20 h-20') : ''}
+                    <span class="t-foot c-1b flex items-center gap-1.5"><i data-lucide="video-off" class="w-4 h-4"></i>Vídeo indisponível</span>
+                </div>`;
+            video.replaceWith(aviso);
+            card.querySelector('.vibe-carregando')?.remove();
+            card.querySelector('.sound-toggle-btn')?.classList.add('hidden');
+            card.querySelector('.vibes-progress-bar')?.parentElement.classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        // Buffer do Vibes: spinner central enquanto o vídeo espera dados. Não intercepta toques.
+        function vibeCarregando(video, ligado) {
+            const camada = video.closest('.vibes-card')?.querySelector('.vibe-carregando');
+            if (!camada) return;
+            camada.classList.toggle('hidden', !ligado);
+            camada.classList.toggle('flex', ligado);
         }
     </script>
 </body>
