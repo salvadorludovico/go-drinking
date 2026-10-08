@@ -107,7 +107,7 @@ Ordem: T1 → T10 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T1
   - `<style>` próprio ganha `.hidden { display: none !important }` antes de tudo, como seguro contra o flash do Tailwind Play CDN.
   - Verificação: capturas `t8-contrato-check` (modal da vaga na etapa do contrato), `t8-busca-com-x`, `t8-hoje-390` idêntica à `ref-hoje-390` exceto pelas bordas laterais.
 
-- [ ] **T9. Alturas fixas que não cabem em celular pequeno**
+- [x] **T9. Alturas fixas que não cabem em celular pequeno** — commit `0fe0099`. Detalhe do herói ficou sem `truncate` (esconderia o preço em 390); rail em `aspect-ratio: 5/6` (reproduz 200x240). Conhecido: em 320x568 o título do herói cai sobre o logotipo da capa de demonstração.
   - Herói do Hoje (1829): `height: min(400px, 52dvh)`; capa da casa (3215): `min(460px, 58dvh)`; cartão do rail (1862): `aspect-ratio: 4 / 5` com `height: auto`; miniatura Vibes (3205) e mapa da casa (2976) mantêm, são pequenas.
   - Rodapé do herói (1845–1851): `truncate` no `t-headline` e no detalhe; abaixo de 360 px, botão passa para a linha de baixo (`flex-wrap` com o botão `basis-full`).
   - `.segmented button`: `padding: 0 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap`.

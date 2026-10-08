@@ -253,6 +253,10 @@
         @media (max-width: 359px) {
             .hero-rodape { flex-wrap: wrap; }
             .hero-rodape > .btn-primary { flex-basis: 100%; }
+            /* Herói baixo: o logo sobe e o escurecimento começa antes, para o título não cair sobre a arte */
+            .hero-alt .midia-logo { transform: translateY(-28%); }
+            .hero-alt .midia-capa { object-position: 50% 100%; }
+            .hero-alt .scrim-hero { background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0.78) 46%, rgba(0,0,0,0.97) 100%); }
         }
 
         @media (prefers-reduced-motion: reduce) {
