@@ -93,6 +93,7 @@
         /* Toque: resposta física, sem brilho */
         .press { transition: transform 0.18s ease, opacity 0.18s ease; cursor: pointer; }
         .press:active { transform: scale(0.97); opacity: 0.85; }
+        @media (hover: hover) { .press:hover { opacity: 0.9; } }
         /* Segurar o dedo não abre "Salvar imagem", pré-visualização de link nem seleção de texto */
         img, .press, .pino, .tab-btn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         /* Área de toque de 44 px em volta de um controle menor, sem mudar o desenho (o elemento precisa de position) */
@@ -154,7 +155,7 @@
         .search-field { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 12px; background: var(--fill-1); color: var(--label-3); }
 
         .segmented { display: flex; height: 36px; padding: 2px; border-radius: 9px; background: var(--fill-1); }
-        .segmented button { flex: 1; border-radius: 7px; font-size: 13px; font-weight: 500; color: #ebebf5; transition: background 0.2s ease; }
+        .segmented button { flex: 1; border-radius: 7px; font-size: 13px; font-weight: 500; color: #ebebf5; transition: background 0.2s ease; padding: 0 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .segmented button[aria-selected="true"] { background: #636366; color: #ffffff; font-weight: 600; }
 
         .stepper { width: 44px; height: 44px; border-radius: 22px; background: var(--fill-3); display: flex; align-items: center; justify-content: center; color: #ffffff; }
@@ -243,6 +244,16 @@
         .row.campo-erro, .row.campo-erro:has(input:focus-visible) { box-shadow: inset 0 0 0 1.5px var(--danger); }
         .otp-caixa.campo-erro { border-color: var(--danger); }
         .msg-erro { font-size: 13px; line-height: 18px; color: var(--danger); }
+
+        /* Alturas que encolhem em tela baixa; vh antes como fallback de dvh */
+        .hero-alt { height: min(400px, 52vh); height: min(400px, 52dvh); }
+        .capa-alt { height: min(460px, 58vh); height: min(460px, 58dvh); }
+        .rail-capa { aspect-ratio: 5 / 6; height: auto; }
+        /* Rodapé do herói: abaixo de 360 px o botão desce para a linha de baixo */
+        @media (max-width: 359px) {
+            .hero-rodape { flex-wrap: wrap; }
+            .hero-rodape > .btn-primary { flex-basis: 100%; }
+        }
 
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -1855,7 +1866,7 @@
 
             return `
                 <div class="px-4">
-                    <article class="relative h-[400px] card rounded-[24px] overflow-hidden">
+                    <article class="relative hero-alt card rounded-[24px] overflow-hidden">
                         ${midiaHtml(house, 'absolute inset-0')}
                         <div class="absolute inset-0 scrim-hero"></div>
                         <button onclick="openHouseDetail('${house.id}', '${st.prog.id}')" aria-label="Ver ${escHtml(nomeNoite(st.prog))} em ${escHtml(nomeCasa(house))}" class="press absolute inset-0 w-full"></button>
@@ -1871,9 +1882,9 @@
                                 </div>
                                 <h2 class="t-title1">${nomeNoite(st.prog)}</h2>
                             </div>
-                            <div class="flex justify-between items-center gap-3">
+                            <div class="hero-rodape flex justify-between items-center gap-3">
                                 <div class="min-w-0 flex flex-col gap-0.5">
-                                    <span class="t-headline ${ent.urgente ? 'c-accent' : ''}">${ent.principal}</span>
+                                    <span class="t-headline truncate ${ent.urgente ? 'c-accent' : ''}">${ent.principal}</span>
                                     ${ent.detalheCurto ? `<span class="t-foot c-1b">${ent.detalheCurto}</span>` : ''}
                                 </div>
                                 <button onclick="openReservationModal('${st.prog.id}', '${house.id}', '${tipo}')" class="press btn-primary sm pointer-events-auto relative">${GARANTIAS[tipo].acao}</button>
@@ -1888,7 +1899,7 @@
             const quando = st.estado === 'agora' ? `até ${fmtHora(st.fim)}` : `às ${fmtHora(st.inicio)}`;
             return `
                 <button onclick="openHouseDetail('${house.id}', '${st.prog.id}')" class="press shrink-0 w-[200px] text-left flex flex-col gap-2">
-                    <span class="relative block h-[240px] rounded-2xl overflow-hidden">
+                    <span class="relative block rail-capa rounded-2xl overflow-hidden">
                         ${midiaHtml(house, 'absolute inset-0')}
                         <span class="glass chip-glass absolute top-2.5 right-2.5">${ent.badge || ent.curto}</span>
                     </span>
@@ -3279,7 +3290,7 @@
 
             if (mapaCasa) { mapaCasa.remove(); mapaCasa = null; }
             view.innerHTML = `
-                <div class="relative h-[460px]">
+                <div class="relative capa-alt">
                     ${midiaHtml(house, 'absolute inset-0')}
                     <div class="absolute inset-0 scrim-casa"></div>
                     <div class="absolute left-4 right-4 bottom-5 flex flex-col gap-2.5">
