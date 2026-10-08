@@ -227,6 +227,14 @@
         .otp-caixa.erro { border-color: var(--danger); }
         .otp input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; font-size: 16px; caret-color: transparent; }
 
+        /* Feedback: carregamento e erro em campo. Sob movimento reduzido o spinner fica parado, então sempre vai com texto. */
+        .spinner { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: spin 0.8s linear infinite; flex-shrink: 0; vertical-align: middle; }
+        .spinner.lg { width: 36px; height: 36px; border-width: 3px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .row.campo-erro { box-shadow: inset 0 0 0 1.5px var(--danger); }
+        .otp-caixa.campo-erro { border-color: var(--danger); }
+        .msg-erro { font-size: 13px; line-height: 18px; color: var(--danger); }
+
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation: none !important; transition: none !important; }
         }
@@ -654,9 +662,12 @@
         </div>
 
         <!-- AVISO RÁPIDO -->
-        <div id="toast-success" role="status" aria-live="polite" class="glass fixed left-1/2 -translate-x-1/2 z-[70] h-11 px-4 rounded-full flex items-center gap-2 t-sub font-semibold shadow-2xl hidden" style="top: calc(env(safe-area-inset-top) + 10px);">
-            <i data-lucide="circle-check" class="w-[18px] h-[18px] c-live"></i>
-            <span id="toast-message">Confirmado</span>
+        <div id="toast-success" role="status" aria-live="polite" class="glass fixed left-1/2 -translate-x-1/2 z-[70] w-max max-w-[calc(100vw-32px)] h-11 px-4 rounded-full flex items-center gap-2 t-sub font-semibold shadow-2xl hidden" style="top: calc(env(safe-area-inset-top) + 10px);">
+            <i data-lucide="circle-check" data-toast-tipo="sucesso" class="w-[18px] h-[18px] shrink-0 c-live"></i>
+            <i data-lucide="circle-alert" data-toast-tipo="erro" class="w-[18px] h-[18px] shrink-0 c-danger hidden"></i>
+            <i data-lucide="info" data-toast-tipo="neutro" class="w-[18px] h-[18px] shrink-0 c-2 hidden"></i>
+            <span id="toast-message" class="truncate min-w-0">Confirmado</span>
+            <button id="toast-acao" type="button" class="press t-sub font-semibold c-accent pl-1 shrink-0 hidden"></button>
         </div>
 
     </div>
@@ -2174,10 +2185,7 @@
 
             const lista = itens.length
                 ? `<div class="space-y-3">${itens.map(i => cartaoAgendaHtml(i, ref)).join('')}</div>`
-                : `<div class="group-list px-4 py-8 text-center space-y-1">
-                       <p class="t-headline">Nada programado</p>
-                       <p class="t-sub c-2">Nenhuma casa publicou programação para este dia.</p>
-                   </div>`;
+                : vazioCompactoHtml('Nenhuma casa publicou programação para este dia.', { titulo: 'Nada programado' });
 
             const rodape = itens.length && fechadas.length
                 ? `<p class="t-foot c-3 px-1">Sem programação neste dia: ${fechadas.join(', ')}.</p>` : '';
@@ -3488,12 +3496,60 @@
             }, 350);
         }
 
-        function showSuccessToast(msg) {
+        // Aviso rápido no topo. tipo: 'sucesso' | 'erro' | 'neutro'; acao: { rotulo, fn } opcional (fica 5 s em vez de 2 s).
+        function mostrarToast(msg, { tipo = 'sucesso', acao = null } = {}) {
             const toast = document.getElementById('toast-success');
             document.getElementById('toast-message').innerText = msg;
+            toast.querySelectorAll('[data-toast-tipo]').forEach(i => i.classList.toggle('hidden', i.getAttribute('data-toast-tipo') !== tipo));
+            const botao = document.getElementById('toast-acao');
+            botao.textContent = acao ? acao.rotulo : '';
+            botao.classList.toggle('hidden', !acao);
+            botao.onclick = acao ? () => { clearTimeout(mostrarToast.timer); toast.classList.add('hidden'); acao.fn(); } : null;
             toast.classList.remove('hidden');
-            clearTimeout(showSuccessToast.timer);
-            showSuccessToast.timer = setTimeout(() => toast.classList.add('hidden'), 2000);
+            clearTimeout(mostrarToast.timer);
+            mostrarToast.timer = setTimeout(() => toast.classList.add('hidden'), acao ? 5000 : 2000);
+        }
+
+        function showSuccessToast(msg) {
+            mostrarToast(msg, { tipo: 'sucesso' });
+        }
+
+        // Botão em voo: desabilita, mostra spinner + texto e devolve a função que restaura.
+        function emVoo(botao, texto) {
+            const original = botao.innerHTML;
+            botao.disabled = true;
+            botao.setAttribute('aria-busy', 'true');
+            botao.innerHTML = `<span class="spinner" aria-hidden="true"></span>${texto}`;
+            return () => {
+                botao.innerHTML = original;
+                botao.disabled = false;
+                botao.removeAttribute('aria-busy');
+            };
+        }
+
+        function aguardar(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Vazio de tela inteira: círculo com ícone, título, texto e ação opcional.
+        function vazioHtml({ icone, titulo, texto, acaoHtml = '' }) {
+            return `
+                    <div class="pt-10 pb-4 flex flex-col items-center text-center gap-2">
+                        <span class="w-14 h-14 rounded-full bg-[#1c1c1e] flex items-center justify-center mb-2"><i data-lucide="${icone}" class="w-6 h-6 c-2"></i></span>
+                        <p class="t-headline">${titulo}</p>
+                        <p class="t-sub c-2 max-w-[280px]">${texto}</p>
+                        ${acaoHtml}
+                    </div>`;
+        }
+
+        // Vazio dentro de uma seção: caixa agrupada com texto; título e ação opcionais.
+        function vazioCompactoHtml(texto, { titulo = '', acaoHtml = '' } = {}) {
+            return `
+                    <div class="group-list px-4 ${titulo ? 'py-8 space-y-1' : 'py-6 space-y-2'} text-center">
+                        ${titulo ? `<p class="t-headline">${titulo}</p>` : ''}
+                        <p class="t-sub c-2">${texto}</p>
+                        ${acaoHtml}
+                    </div>`;
         }
 
         /* ===================================================================
@@ -3647,13 +3703,12 @@
 
             // Os passes são da conta: visitante não vê os de quem saiu.
             if (!sessao.logado) {
-                lista.innerHTML = `
-                    <div class="pt-10 pb-4 flex flex-col items-center text-center gap-2">
-                        <span class="w-14 h-14 rounded-full bg-[#1c1c1e] flex items-center justify-center mb-2"><i data-lucide="ticket" class="w-6 h-6 c-2"></i></span>
-                        <p class="t-headline">Seus ingressos ficam aqui</p>
-                        <p class="t-sub c-2 max-w-[280px]">Entre com seu celular para ver as listas e mesas que você garantiu, com o QR da portaria.</p>
-                        <button onclick="abrirLogin()" class="press btn-primary sm mt-3">Entrar com celular</button>
-                    </div>`;
+                lista.innerHTML = vazioHtml({
+                    icone: 'ticket',
+                    titulo: 'Seus ingressos ficam aqui',
+                    texto: 'Entre com seu celular para ver as listas e mesas que você garantiu, com o QR da portaria.',
+                    acaoHtml: `<button onclick="abrirLogin()" class="press btn-primary sm mt-3">Entrar com celular</button>`
+                });
                 lucide.createIcons();
                 return;
             }
@@ -3667,12 +3722,11 @@
                 const noites = noitesDaSemana(ref);
                 const agoraL = noites.filter(x => x.st.estado === 'agora');
                 const sugestao = escolherDestaque(agoraL.length ? agoraL : noites.filter(x => x.st.estado === 'hoje'), ref);
-                lista.innerHTML = `
-                    <div class="pt-10 pb-4 flex flex-col items-center text-center gap-2">
-                        <span class="w-14 h-14 rounded-full bg-[#1c1c1e] flex items-center justify-center mb-2"><i data-lucide="ticket" class="w-6 h-6 c-2"></i></span>
-                        <p class="t-headline">Nenhum ingresso por enquanto</p>
-                        <p class="t-sub c-2 max-w-[280px]">Quando você entrar numa lista, o ingresso aparece aqui com o QR da portaria.</p>
-                    </div>
+                lista.innerHTML = `${vazioHtml({
+                    icone: 'ticket',
+                    titulo: 'Nenhum ingresso por enquanto',
+                    texto: 'Quando você entrar numa lista, o ingresso aparece aqui com o QR da portaria.'
+                })}
                     ${sugestao ? `
                     <p class="t-cap c-2 px-1 pt-4">Rolando hoje</p>
                     <button onclick="openHouseDetail('${sugestao.house.id}', '${sugestao.st.prog.id}')" class="press group-list row" style="min-height: 76px;">
@@ -4052,7 +4106,7 @@
             salvarSessao();
             redesenharTudo();
             renderMenu();
-            showSuccessToast(logado ? `Logado como ${sessao.nome.split(' ')[0]}` : 'Modo visitante');
+            mostrarToast(logado ? `Logado como ${sessao.nome.split(' ')[0]}` : 'Modo visitante', { tipo: logado ? 'sucesso' : 'neutro' });
         }
 
         /* ===================================================================
@@ -4341,7 +4395,7 @@
                 }
             });
             
-            showSuccessToast(isVibesMuted ? "Áudio Mutado" : "Áudio Ativado");
+            mostrarToast(isVibesMuted ? "Áudio Mutado" : "Áudio Ativado", { tipo: isVibesMuted ? 'neutro' : 'sucesso' });
         }
 
         function initVibesEngine() {
@@ -4589,10 +4643,7 @@
         function htmlListaGerente(house) {
             const lista = reservasDaCasa(house.id);
             if (lista.length === 0) {
-                return `
-                    <div class="group-list px-4 py-6 text-center t-sub c-2">
-                        Nenhum nome na lista de ${nomeCasa(house)} ainda.
-                    </div>`;
+                return vazioCompactoHtml(`Nenhum nome na lista de ${nomeCasa(house)} ainda.`);
             }
             // Quem falta entrar vem primeiro: é o que a portaria procura.
             const ordenada = [...lista].sort((a, b) => (a.status === 'presente') - (b.status === 'presente'));
@@ -4951,7 +5002,7 @@
                                 ${acao}
                             </div>
                         </article>`;
-                }).join('') || `<div class="group-list px-4 py-6 text-center t-sub c-2">Nenhuma vaga para essa função agora.</div>`;
+                }).join('') || vazioCompactoHtml('Nenhuma vaga para essa função agora.');
 
             view.innerHTML = `
                 <div class="space-y-3">
@@ -5125,7 +5176,7 @@
                     <div class="space-y-6">
                         ${cabecalho}
                         <div class="flex flex-col items-center gap-4 py-12 text-center">
-                            <div class="w-9 h-9 border-[3px] border-[#3a3a3c] border-t-white rounded-full animate-spin"></div>
+                            <span class="spinner lg" aria-hidden="true"></span>
                             <p class="t-sub c-2">Candidatura enviada.<br>Aguardando a aprovação de ${nomeCasa(house)}…</p>
                         </div>
                     </div>`;
@@ -5212,10 +5263,9 @@
                 return `
                     <section class="space-y-2.5">
                         <h2 class="t-title3">Equipe freela</h2>
-                        <div class="group-list px-4 py-6 text-center space-y-2">
-                            <p class="t-sub c-2">Nenhum freela escalado. ${publicadas} ${publicadas === 1 ? 'vaga publicada' : 'vagas publicadas'}.</p>
-                            ${publicadas ? `<button onclick="switchTab('freelas')" class="press t-sub c-accent">Ver como o freela vê</button>` : ''}
-                        </div>
+                        ${vazioCompactoHtml(`Nenhum freela escalado. ${publicadas} ${publicadas === 1 ? 'vaga publicada' : 'vagas publicadas'}.`, {
+                            acaoHtml: publicadas ? `<button onclick="switchTab('freelas')" class="press t-sub c-accent">Ver como o freela vê</button>` : ''
+                        })}
                     </section>`;
             }
 
