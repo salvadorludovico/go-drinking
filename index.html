@@ -2,7 +2,7 @@
 <html lang="pt-BR" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
     <title>LUAN</title>
 
@@ -36,6 +36,9 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
     <style>
+        /* Seguro contra o flash: vale antes de o Tailwind Play CDN gerar as classes */
+        .hidden { display: none !important; }
+
         /* ===================================================================
            SISTEMA VISUAL
            Fundo preto, uma família tipográfica, botão principal branco e uma
@@ -90,6 +93,15 @@
         /* Toque: resposta física, sem brilho */
         .press { transition: transform 0.18s ease, opacity 0.18s ease; cursor: pointer; }
         .press:active { transform: scale(0.97); opacity: 0.85; }
+        /* Segurar o dedo não abre "Salvar imagem", pré-visualização de link nem seleção de texto */
+        img, .press, .pino, .tab-btn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        /* Área de toque de 44 px em volta de um controle menor, sem mudar o desenho (o elemento precisa de position) */
+        .alvo-44::before { content: ''; position: absolute; inset: min(0px, calc(50% - 22px)); }
+        /* Link de texto com 44 px de altura; margens verticais negativas no uso mantêm o texto no lugar */
+        .link-44 { min-height: 44px; display: inline-flex; align-items: center; }
+        /* Barras fixas: margem lateral que respeita o recorte em paisagem */
+        .px-safe { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+        .px-safe.rente { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); } /* barras de abas: botões de ponta a ponta */
 
         /* Cartão: superfície padrão sobre o fundo preto */
         .card { background: var(--fill-1); border-radius: 18px; }
@@ -105,7 +117,7 @@
         .btn-primary.lg { height: 54px; } /* ação final de uma folha */
         .btn-primary.alt { background: var(--fill-2); color: #ffffff; }
         .btn-primary:disabled { background: var(--fill-2); color: var(--label-3); }
-        .btn-secondary { height: 36px; padding: 0 14px; border-radius: 18px; background: var(--fill-2); color: #ffffff; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-secondary { height: 40px; padding: 0 14px; border-radius: 20px; background: var(--fill-2); color: #ffffff; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
         .btn-secondary.claro { background: #ffffff; color: #000000; } /* ação principal dentro de uma linha */
 
         /* Materiais translúcidos */
@@ -141,17 +153,23 @@
 
         .search-field { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 12px; background: var(--fill-1); color: var(--label-3); }
 
-        .segmented { display: flex; height: 32px; padding: 2px; border-radius: 9px; background: var(--fill-1); }
+        .segmented { display: flex; height: 36px; padding: 2px; border-radius: 9px; background: var(--fill-1); }
         .segmented button { flex: 1; border-radius: 7px; font-size: 13px; font-weight: 500; color: #ebebf5; transition: background 0.2s ease; }
         .segmented button[aria-selected="true"] { background: #636366; color: #ffffff; font-weight: 600; }
 
-        .stepper { width: 36px; height: 36px; border-radius: 18px; background: var(--fill-3); display: flex; align-items: center; justify-content: center; color: #ffffff; }
+        .stepper { width: 44px; height: 44px; border-radius: 22px; background: var(--fill-3); display: flex; align-items: center; justify-content: center; color: #ffffff; }
         .stepper:disabled { opacity: 0.35; }
 
         .switch { appearance: none; -webkit-appearance: none; width: 51px; height: 31px; border-radius: 16px; background: var(--fill-3) !important; position: relative; transition: background 0.2s ease; flex-shrink: 0; cursor: pointer; }
         .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 14px; background: #ffffff; transition: transform 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
         .switch:checked { background: var(--live) !important; }
         .switch:checked::after { transform: translateX(20px); }
+
+        /* Caixa de seleção própria: a área de toque é a .row que a envolve */
+        .check { appearance: none; -webkit-appearance: none; width: 24px; height: 24px; margin: 0; border-radius: 7px; background-color: var(--fill-3) !important; display: inline-grid; place-content: center; flex-shrink: 0; cursor: pointer; transition: background-color 0.15s ease; }
+        .check::after { content: ''; width: 16px; height: 16px; opacity: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; }
+        .check:checked { background-color: var(--live) !important; }
+        .check:checked::after { opacity: 1; }
 
         .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding-top: 7px; height: 49px; color: var(--label-3); position: relative; }
         .tab-btn.on { color: #ffffff; }
@@ -220,7 +238,9 @@
         .spinner { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: spin 0.8s linear infinite; flex-shrink: 0; vertical-align: middle; }
         .spinner.lg { width: 36px; height: 36px; border-width: 3px; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .row.campo-erro { box-shadow: inset 0 0 0 1.5px var(--danger); }
+        /* Foco no campo aparece na caixa que o envolve; erro vence foco */
+        .search-field:has(input:focus-visible), .row:has(input:focus-visible) { box-shadow: inset 0 0 0 1.5px var(--primary); }
+        .row.campo-erro, .row.campo-erro:has(input:focus-visible) { box-shadow: inset 0 0 0 1.5px var(--danger); }
         .otp-caixa.campo-erro { border-color: var(--danger); }
         .msg-erro { font-size: 13px; line-height: 18px; color: var(--danger); }
 
@@ -244,7 +264,6 @@
         }
         input:focus, textarea:focus {
             border-color: var(--primary) !important;
-            outline: none !important;
         }
         /* Campos embutidos em linhas de lista: sem caixa própria */
         .bare {
@@ -256,7 +275,8 @@
             min-width: 0;
         }
         .bare.c-2 { color: var(--label-2) !important; }
-        input[type="search"]::-webkit-search-cancel-button { filter: invert(0.6); }
+        .bare:focus-visible { outline: none; } /* o anel fica na .row ou na .search-field */
+        input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
         input::placeholder {
             color: #8e8e93 !important;
         }
@@ -264,6 +284,7 @@
             outline: 2px solid var(--accent);
             outline-offset: 2px;
         }
+        .group-list :focus-visible { outline-offset: -2px; } /* dentro de overflow: hidden o anel não é cortado */
 
         /* --- CORREÇÕES DE iPhone (iOS Safari) --- */
 
@@ -293,11 +314,11 @@
 <body class="min-h-screen bg-black">
 
     <!-- Container Principal Centrado: Fica perfeito no Desktop e 100% fluido no Celular -->
-    <div class="max-w-md mx-auto bg-black min-h-screen flex flex-col border-x border-[#1c1c1e] relative pb-28">
+    <div class="max-w-md mx-auto bg-black min-h-screen flex flex-col md:border-x border-[#1c1c1e] relative pb-28">
 
         <!-- Barra compacta: aparece quando o título grande sai da tela (padrão iOS) -->
-        <div id="barra-compacta" aria-hidden="true" class="bar-top fixed top-0 inset-x-0 max-w-md mx-auto z-30 pointer-events-none opacity-0 transition-opacity duration-200" style="padding-top: env(safe-area-inset-top);">
-            <div class="h-11 flex items-center justify-center px-16">
+        <div id="barra-compacta" aria-hidden="true" class="bar-top px-safe fixed top-0 inset-x-0 max-w-md mx-auto z-30 pointer-events-none opacity-0 transition-opacity duration-200" style="padding-top: env(safe-area-inset-top);">
+            <div class="h-11 flex items-center justify-center px-12">
                 <span id="barra-compacta-titulo" class="t-headline truncate"></span>
             </div>
         </div>
@@ -318,7 +339,8 @@
                     <div id="hoje-chips" class="rail -mx-4 gap-2" style="display: none"></div>
                     <label class="search-field">
                         <i data-lucide="search" class="w-[17px] h-[17px] shrink-0"></i>
-                        <input type="search" id="search-input" enterkeyhint="search" oninput="searchFilter()" placeholder="Casa, festa ou estilo" aria-label="Buscar casas e festas" autocomplete="off" class="bare flex-1 t-body text-white">
+                        <input type="search" id="search-input" enterkeyhint="search" oninput="searchFilter(); mostrarLimparBusca(this)" placeholder="Casa, festa ou estilo" aria-label="Buscar casas e festas" autocomplete="off" class="bare flex-1 t-body text-white">
+                        <button type="button" onclick="limparBusca(this)" aria-label="Limpar busca" class="limpar-busca press alvo-44 relative w-[30px] h-[30px] rounded-full bg-[var(--fill-2)] flex items-center justify-center c-2 shrink-0 hidden"><i data-lucide="x" class="w-4 h-4"></i></button>
                     </label>
                 </div>
 
@@ -410,7 +432,7 @@
 
         <!-- CASA: botões flutuantes sobre a imagem -->
         <div id="casa-topo" class="fixed top-0 inset-x-0 max-w-md mx-auto z-40 hidden pointer-events-none">
-            <div class="flex justify-between px-4" style="padding-top: calc(env(safe-area-inset-top) + 2px);">
+            <div class="flex justify-between px-safe" style="padding-top: calc(env(safe-area-inset-top) + 2px);">
                 <button onclick="backToDiscover()" aria-label="Voltar" class="press glass icon-glass pointer-events-auto">
                     <i data-lucide="chevron-left" class="w-[22px] h-[22px]"></i>
                 </button>
@@ -422,7 +444,7 @@
 
         <!-- CASA: ação principal fixa no rodapé -->
         <div id="casa-cta" class="bar-bottom fixed bottom-0 inset-x-0 max-w-md mx-auto z-40 hidden">
-            <div id="casa-cta-linha" class="flex items-center justify-between gap-3 px-4 pt-3.5" style="padding-bottom: calc(env(safe-area-inset-bottom) + 14px);">
+            <div id="casa-cta-linha" class="flex items-center justify-between gap-3 px-safe pt-3.5" style="padding-bottom: calc(env(safe-area-inset-bottom) + 14px);">
                 <div class="min-w-0 flex flex-col gap-0.5">
                     <span id="casa-cta-principal" class="t-headline truncate"></span>
                     <span id="casa-cta-detalhe" class="t-foot c-2 truncate"></span>
@@ -432,7 +454,7 @@
         </div>
 
         <!-- BARRA DE ABAS -->
-        <nav id="tabbar" aria-label="Navegação principal" class="bar-bottom fixed bottom-0 inset-x-0 max-w-md mx-auto z-50 flex safe-bottom">
+        <nav id="tabbar" aria-label="Navegação principal" class="bar-bottom px-safe rente fixed bottom-0 inset-x-0 max-w-md mx-auto z-50 flex safe-bottom">
             <button onclick="switchTab('hoje')" id="nav-hoje" class="tab-btn on">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path class="fill-on" d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                 <span class="rotulo">Hoje</span>
@@ -453,7 +475,7 @@
         </nav>
 
         <!-- BARRA DE ABAS DO MODO GERENTE: a portaria no lugar do cliente -->
-        <nav id="tabbar-gerente" aria-label="Navegação do painel da casa" class="bar-bottom fixed bottom-0 inset-x-0 max-w-md mx-auto z-50 flex safe-bottom hidden">
+        <nav id="tabbar-gerente" aria-label="Navegação do painel da casa" class="bar-bottom px-safe rente fixed bottom-0 inset-x-0 max-w-md mx-auto z-50 flex safe-bottom hidden">
             <button onclick="openManagerDashboard('painel')" id="nav-g-painel" class="tab-btn">
                 <i data-lucide="layout-dashboard" class="w-[26px] h-[26px]" stroke-width="1.8"></i>
                 <span class="rotulo">Painel</span>
@@ -483,7 +505,7 @@
                         <p id="modal-event-title" class="t-headline truncate"></p>
                         <p id="modal-house-title" class="t-foot c-2 truncate"></p>
                     </div>
-                    <button type="button" onclick="closeReservationModal()" aria-label="Fechar" class="press w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center c-2 shrink-0">
+                    <button type="button" onclick="closeReservationModal()" aria-label="Fechar" class="press alvo-44 relative w-9 h-9 rounded-full bg-[#2c2c2e] flex items-center justify-center c-2 shrink-0">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -538,7 +560,7 @@
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeVagaModal()"></div>
             <div class="sheet sheet-teclado sheet-alt-90 bg-[var(--fill-1)] w-full max-w-md rounded-t-[28px] px-5 pt-2 relative overflow-y-auto no-scrollbar pb-safe">
                 <div class="grabber mb-5"></div>
-                <button onclick="closeVagaModal()" aria-label="Fechar" class="press absolute top-5 right-5 w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center">
+                <button onclick="closeVagaModal()" aria-label="Fechar" class="press alvo-44 absolute top-4 right-4 w-9 h-9 rounded-full bg-[#2c2c2e] flex items-center justify-center">
                     <i data-lucide="x" class="w-4 h-4 text-neutral-400"></i>
                 </button>
                 <div id="vaga-modal-content">
@@ -623,10 +645,10 @@
             <div class="sheet sheet-teclado sheet-alt-92 absolute inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
                 <div class="grabber"></div>
                 <div class="flex items-center justify-between pt-2 h-11">
-                    <button id="login-voltar" onclick="voltarLogin()" aria-label="Voltar" class="press w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center c-2 invisible">
+                    <button id="login-voltar" onclick="voltarLogin()" aria-label="Voltar" class="press alvo-44 relative w-9 h-9 rounded-full bg-[#2c2c2e] flex items-center justify-center c-2 invisible">
                         <i data-lucide="chevron-left" class="w-4 h-4"></i>
                     </button>
-                    <button onclick="fecharLogin()" aria-label="Fechar" class="press w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center c-2">
+                    <button onclick="fecharLogin()" aria-label="Fechar" class="press alvo-44 relative w-9 h-9 rounded-full bg-[#2c2c2e] flex items-center justify-center c-2">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -1813,7 +1835,7 @@
         }
 
         function linkAgenda(sel, texto) {
-            return `<button onclick="abrirAgenda('${sel}')" class="press t-sub c-accent shrink-0">${texto}</button>`;
+            return `<button onclick="abrirAgenda('${sel}')" class="press link-44 -my-3 t-sub c-accent shrink-0">${texto}</button>`;
         }
 
         function heroHtml(house, st, ref) {
@@ -1917,7 +1939,7 @@
                 .join('');
 
             const rodape = encerradas.length ? `
-                <button onclick="mostrarEncerradas = !mostrarEncerradas; renderHoje();" class="press t-foot c-3 px-4 pt-2.5 text-left">
+                <button onclick="mostrarEncerradas = !mostrarEncerradas; renderHoje();" class="press link-44 -mt-[3px] -mb-[13px] t-foot c-3 px-4 text-left">
                     ${mostrarEncerradas ? 'Esconder encerradas' : `${encerradas.length} ${encerradas.length === 1 ? 'promoção já encerrou' : 'promoções já encerraram'} hoje`}
                 </button>` : '';
 
@@ -1993,6 +2015,21 @@
         // Filtro de Busca
         function searchFilter() {
             renderHoje();
+        }
+
+        // "x" próprio dos campos de busca (o do navegador fica escondido)
+        function botaoLimparBuscaHtml() {
+            return `<button type="button" onclick="limparBusca(this)" aria-label="Limpar busca" class="limpar-busca press alvo-44 relative w-[30px] h-[30px] rounded-full bg-[var(--fill-2)] flex items-center justify-center c-2 shrink-0 hidden"><i data-lucide="x" class="w-4 h-4"></i></button>`;
+        }
+        function mostrarLimparBusca(input) {
+            const botao = input.parentElement.querySelector('.limpar-busca');
+            if (botao) botao.classList.toggle('hidden', !input.value);
+        }
+        function limparBusca(botao) {
+            const input = botao.parentElement.querySelector('input');
+            input.value = '';
+            input.dispatchEvent(new Event('input'));
+            input.focus();
         }
 
         /* ===================================================================
@@ -2134,8 +2171,8 @@
                 </div>` : '';
 
             return `
-                <a href="?casa=${house.id}" onclick="openHouseDetail('${house.id}', '${prog.id}'); return false;"
-                   class="press block card overflow-hidden ${estado === 'encerrada' ? 'opacity-50' : ''}">
+                <button type="button" onclick="openHouseDetail('${house.id}', '${prog.id}')"
+                   class="press block w-full text-left card overflow-hidden ${estado === 'encerrada' ? 'opacity-50' : ''}">
                     <div class="flex gap-3.5 p-3.5">
                         ${midiaHtml(house, 'w-[72px] h-[72px] rounded-xl shrink-0', 'thumb')}
                         <div class="flex-1 min-w-0 flex flex-col">
@@ -2149,7 +2186,7 @@
                         </div>
                     </div>
                     ${promosHtml}
-                </a>`;
+                </button>`;
         }
 
         function resumoDoDia(itens) {
@@ -2918,7 +2955,7 @@
             const linhas = [];
             const origem = textoOrigem();
             if (origem) linhas.push(origemTipo === 'demo'
-                ? `${origem} <button type="button" onclick="pedirLocalizacao()" class="c-accent font-semibold">Usar a minha</button>`
+                ? `${origem} <button type="button" onclick="pedirLocalizacao()" class="link-44 -my-[13px] c-accent font-semibold">Usar a minha</button>`
                 : origem);
             const itin = (mapaAgenda && mapaAgenda._itinerantes) || [];
             if (itin.length) linhas.push(`${itin.map(nomeCasa).join(' e ')} ${itin.length === 1 ? 'muda' : 'mudam'} de local a cada edição e não ${itin.length === 1 ? 'aparece' : 'aparecem'} no mapa.`);
@@ -2981,7 +3018,7 @@
             const t = trajeto(house);
             if (t) return `${t.texto}${origemTipo === 'demo' ? ` <span class="c-3">(a partir da ${ORIGEM_DEMO.nome})</span>` : ''}`;
             if (origemTipo === 'pedindo') return 'Buscando sua localização…';
-            return `<button type="button" onclick="pedirLocalizacao()" class="c-accent font-semibold">Ver a distância daqui</button>`;
+            return `<button type="button" onclick="pedirLocalizacao()" class="link-44 -my-[13px] c-accent font-semibold">Ver a distância daqui</button>`;
         }
 
         function comoChegarHtml(house) {
@@ -4852,7 +4889,8 @@
                 <div class="group-list">
                     <label class="row gap-2">
                         <i data-lucide="search" class="w-4 h-4 c-2 shrink-0"></i>
-                        <input type="search" enterkeyhint="search" oninput="filtrarListaGerente(this.value)" placeholder="Buscar nome ou WhatsApp" class="bare t-body flex-1">
+                        <input type="search" enterkeyhint="search" oninput="filtrarListaGerente(this.value); mostrarLimparBusca(this)" placeholder="Buscar nome ou WhatsApp" aria-label="Buscar na lista" class="bare t-body flex-1">
+                        ${botaoLimparBuscaHtml()}
                     </label>
                 </div>
                 <div id="lista-gerente" class="group-list">${linhas}</div>
@@ -5419,7 +5457,7 @@
                         </p>
                         ${caixaContrato('Contrato de prestação de serviço')}
                         <label class="group-list on-fill row cursor-pointer">
-                            <input type="checkbox" ${aceite ? 'checked' : ''} onchange="vagaModalState.aceite = this.checked; renderVagaModal();" class="w-5 h-5 shrink-0 accent-[#30d158]">
+                            <input type="checkbox" ${aceite ? 'checked' : ''} onchange="vagaModalState.aceite = this.checked; renderVagaModal();" class="check">
                             <span class="t-sub">Li o contrato e concordo com os termos.</span>
                         </label>
                         <button onclick="assinarContrato(this)" ${aceite ? '' : 'disabled'} class="press btn-primary lg w-full">Assinar contrato</button>
@@ -5522,7 +5560,7 @@
                     <section class="space-y-2.5">
                         <h2 class="t-title3">Equipe freela</h2>
                         ${vazioCompactoHtml(`Nenhum freela escalado. ${publicadas} ${publicadas === 1 ? 'vaga publicada' : 'vagas publicadas'}.`, {
-                            acaoHtml: publicadas ? `<button onclick="switchTab('freelas')" class="press t-sub c-accent">Ver como o freela vê</button>` : ''
+                            acaoHtml: publicadas ? `<button onclick="switchTab('freelas')" class="press link-44 !-mt-1 !-mb-3 t-sub c-accent">Ver como o freela vê</button>` : ''
                         })}
                     </section>`;
             }
@@ -5652,7 +5690,7 @@
 
                     <div class="absolute inset-0 pointer-events-none" style="background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.92) 100%);"></div>
 
-                    <div class="absolute inset-x-0 z-40 px-4 flex items-center justify-between" style="top: calc(env(safe-area-inset-top) + 10px);">
+                    <div class="absolute inset-x-0 z-40 px-safe flex items-center justify-between" style="top: calc(env(safe-area-inset-top) + 10px);">
                         <span class="t-headline">${index === 0 ? 'Vibes' : ''}</span>
                         <button onclick="toggleVibesAudio(event)" aria-label="Ligar ou desligar o som" class="press glass icon-glass sound-toggle-btn">
                             <i data-lucide="volume-x" class="w-[18px] h-[18px] mute-icon ${isVibesMuted ? '' : 'hidden'}"></i>
