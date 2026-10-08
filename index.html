@@ -4717,14 +4717,17 @@
                     <p class="t-large">${valor}</p>
                 </div>`;
 
-            return `
-                ${noite}
+            const numeros = st ? `
                 <div class="grid grid-cols-2 gap-3">
                     ${numero('Esperadas', pessoas(lista))}
                     ${numero('Já entraram', pessoas(entraram))}
                     ${numero('Faltam entrar', pessoas(lista) - pessoas(entraram))}
                     ${numero('Freelas em turno', emTurno)}
-                </div>
+                </div>` : vazioCompactoHtml('Nenhuma noite publicada. Os números aparecem quando a próxima noite estiver na agenda.');
+
+            return `
+                ${noite}
+                ${numeros}
                 <button onclick="openManagerDashboard('qr')" class="press btn-primary w-full flex items-center justify-center gap-2">
                     <i data-lucide="scan-line" class="w-5 h-5"></i>Ler QR da entrada
                 </button>
@@ -4741,7 +4744,7 @@
             const linhas = ordenada.map(r => {
                 const acao = r.status === 'presente'
                     ? `<span class="t-foot c-live flex items-center gap-1 shrink-0"><i data-lucide="check" class="w-3.5 h-3.5"></i>Entrou</span>`
-                    : `<button onclick="confirmPresence('${r.id}')" class="press btn-secondary claro shrink-0">Validar entrada</button>`;
+                    : `<button onclick="confirmPresence('${r.id}', this)" class="press btn-secondary claro shrink-0">Validar entrada</button>`;
                 const quando = r.eventDate ? diaRelativo(new Date(r.eventDate)) : '';
                 return `
                     <div class="row" style="min-height: 64px;" data-busca="${escHtml((r.userName + ' ' + (r.userPhone || '')).toLocaleLowerCase('pt-BR'))}">
@@ -4762,14 +4765,22 @@
                     </label>
                 </div>
                 <div id="lista-gerente" class="group-list">${linhas}</div>
+                <div id="lista-gerente-vazia" class="hidden"></div>
             `;
         }
 
         function filtrarListaGerente(termo) {
             const t = termo.trim().toLocaleLowerCase('pt-BR');
+            let visiveis = 0;
             document.querySelectorAll('#lista-gerente [data-busca]').forEach(el => {
-                el.classList.toggle('hidden', !!t && !el.dataset.busca.includes(t));
+                const some = !!t && !el.dataset.busca.includes(t);
+                el.classList.toggle('hidden', some);
+                if (!some) visiveis++;
             });
+            const vazia = document.getElementById('lista-gerente-vazia');
+            document.getElementById('lista-gerente').classList.toggle('hidden', visiveis === 0);
+            vazia.classList.toggle('hidden', visiveis > 0);
+            vazia.innerHTML = visiveis > 0 ? '' : vazioCompactoHtml(`Nenhum nome com "${escHtml(termo.trim())}".`);
         }
 
         function marcarPresenca(id) {
@@ -4781,11 +4792,30 @@
             return true;
         }
 
-        function confirmPresence(id) {
-            if (marcarPresenca(id)) {
-                showSuccessToast("Entrada validada");
-                openManagerDashboard();
+        async function confirmPresence(id, botao) {
+            const r = reservations.find(x => x.id === id);
+            if (!r) return;
+            const anterior = r.status;
+            if (botao) {
+                const restaurar = emVoo(botao, 'Validando…');
+                await aguardar(500);
+                restaurar();
             }
+            if (marcarPresenca(id)) {
+                mostrarToast('Entrada validada', { tipo: 'sucesso', acao: { rotulo: 'Desfazer', fn: () => desfazerPresenca(id, anterior) } });
+                if (currentTab === 'gerente') openManagerDashboard();
+            }
+        }
+
+        // Volta a reserva ao status de antes da validação (toque errado na portaria).
+        function desfazerPresenca(id, anterior) {
+            const r = reservations.find(x => x.id === id);
+            if (!r || r.status !== 'presente') return;
+            r.status = anterior;
+            try { localStorage.setItem('gyn_reservas', JSON.stringify(reservations)); } catch (e) { /* segue na memória */ }
+            updateReservasUI();
+            mostrarToast('Entrada desfeita', { tipo: 'neutro' });
+            if (currentTab === 'gerente') openManagerDashboard();
         }
 
         /* --- LER QR: câmera traseira + jsQR --- */
@@ -4796,15 +4826,16 @@
 
         function htmlLeitorQr(house) {
             const pendentes = reservasDaCasa(house.id).filter(r => r.status !== 'presente');
-            const simular = pendentes.length === 0 ? '' : `
+            const simular = `
                 <section class="space-y-2">
                     <p class="t-cap c-2 px-4">Sem outro celular? Simule a leitura</p>
+                    ${pendentes.length === 0 ? '<p class="t-foot c-3 px-4">Nenhum ingresso pendente para simular.</p>' : `
                     <div class="group-list">${pendentes.map(r => `
                         <button onclick="simularLeitura('${r.id}')" class="press row justify-between">
                             <span class="t-body truncate">${escHtml(r.userName)}</span>
                             <span class="t-foot c-2 shrink-0">${rotuloGarantia(r)}</span>
                         </button>`).join('')}
-                    </div>
+                    </div>`}
                 </section>`;
 
             return `
@@ -4903,7 +4934,7 @@
                 } else {
                     tipo = 'ok';
                     leituraPendente = { ...lido, ...(local || {}) };
-                    acao = `<button onclick="confirmarLeitura()" class="press btn-primary flex-1">Confirmar entrada</button>`;
+                    acao = `<button onclick="confirmarLeitura(this)" class="press btn-primary flex-1">Confirmar entrada</button>`;
                 }
             }
 
@@ -4927,9 +4958,16 @@
             lucide.createIcons();
         }
 
-        function confirmarLeitura() {
+        async function confirmarLeitura(botao) {
             const r = leituraPendente;
             if (!r) return;
+            if (botao) {
+                const restaurar = emVoo(botao, 'Confirmando…');
+                await aguardar(500);
+                restaurar();
+                // "Ler outro" ou troca de aba durante o voo cancela sem efeito
+                if (leituraPendente !== r || currentTab !== 'gerente' || abaGerente !== 'qr') return;
+            }
             // Ingresso de outro celular: entra na lista desta casa na hora da leitura
             if (!reservations.some(x => x.id === r.id)) {
                 const house = housesData.find(h => h.id === r.houseId);
