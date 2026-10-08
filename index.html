@@ -5043,6 +5043,7 @@
         let escalas = [];
         try { escalas = JSON.parse(localStorage.getItem('gyn_escalas')) || []; } catch (e) { escalas = []; }
         let freelaFiltro = 'todas';
+        const candidaturas = new Set();   // vagas com candidatura enviada nesta sessão (antes de virar escala)
         let vagaModalState = { vagaId: null, etapa: 'termos', aceite: false };
 
         function salvarEscalas() {
@@ -5167,7 +5168,14 @@
         }
 
         function htmlMinhasEscalas() {
-            if (escalas.length === 0) return '';
+            if (escalas.length === 0) {
+                if (candidaturas.size === 0) return '';
+                return `
+                <section class="space-y-3">
+                    <h2 class="t-title2">Minhas escalas</h2>
+                    ${vazioCompactoHtml('Nenhuma escala ainda. Quando uma casa aprovar você, ela aparece aqui.')}
+                </section>`;
+            }
             const cards = escalas
                 .map(e => ({ e, ctx: contextoEscala(e) }))
                 .sort((a, b) => a.ctx.inicio - b.ctx.inicio)
@@ -5188,7 +5196,7 @@
                         rodape = `
                             <div class="flex items-center justify-between gap-3">
                                 <p class="t-sub c-2">Turno fechado. Emita a nota de ${fmtReais(ctx.vaga.valor)}.</p>
-                                <button onclick="enviarNotaFiscal('${e.id}')" class="press btn-primary sm shrink-0">Enviar nota</button>
+                                <button onclick="enviarNotaFiscal('${e.id}', this)" class="press btn-primary sm shrink-0">Enviar nota</button>
                             </div>`;
                     } else if (e.status === 'nota_enviada') {
                         rodape = `<p class="t-sub c-live">Nota recebida. Pix de ${fmtReais(ctx.vaga.valor)} previsto até ${diaRelativo(new Date(e.pagamentoAte)).toLowerCase()}.</p>`;
@@ -5298,7 +5306,7 @@
                             <p><span class="text-white font-semibold">Tributos:</span> contratação como MEI, sem retenção na fonte. Você emite a nota fiscal depois do turno.</p>
                             <p><span class="text-white font-semibold">Cancelamento:</span> sem custo até 24h antes do início.</p>
                         </div>
-                        <button onclick="candidatarVaga()" class="press btn-primary lg w-full">Quero essa vaga</button>
+                        <button onclick="candidatarVaga(this)" class="press btn-primary lg w-full">Quero essa vaga</button>
                     </div>`;
             } else if (etapa === 'aprovando') {
                 el.innerHTML = `
@@ -5321,7 +5329,7 @@
                             <input type="checkbox" ${aceite ? 'checked' : ''} onchange="vagaModalState.aceite = this.checked; renderVagaModal();" class="w-5 h-5 shrink-0 accent-[#30d158]">
                             <span class="t-sub">Li o contrato e concordo com os termos.</span>
                         </label>
-                        <button onclick="assinarContrato()" ${aceite ? '' : 'disabled'} class="press btn-primary lg w-full">Assinar contrato</button>
+                        <button onclick="assinarContrato(this)" ${aceite ? '' : 'disabled'} class="press btn-primary lg w-full">Assinar contrato</button>
                         <p class="t-foot c-3 text-center">Assinatura eletrônica com validade jurídica (Lei 14.063/2020).</p>
                     </div>`;
             } else if (etapa === 'assinado') {
@@ -5340,8 +5348,22 @@
             lucide.createIcons();
         }
 
+        // O voo vale enquanto o modal segue aberto na mesma vaga e etapa; fechar ou trocar cancela sem efeito.
+        function vooDoModalValido(estado, etapa) {
+            return vagaModalState === estado && estado.etapa === etapa
+                && !document.getElementById('vaga-modal').classList.contains('hidden');
+        }
+
         // Na demo a casa aprova sozinha em 1,5s; no produto é o gerente no painel.
-        function candidatarVaga() {
+        async function candidatarVaga(botao) {
+            const estado = vagaModalState;
+            if (botao) {
+                const restaurar = emVoo(botao, 'Enviando…');
+                await aguardar(600);
+                restaurar();
+                if (!vooDoModalValido(estado, 'termos')) return;
+            }
+            candidaturas.add(estado.vagaId);
             vagaModalState.etapa = 'aprovando';
             renderVagaModal();
             setTimeout(() => {
@@ -5351,7 +5373,14 @@
             }, 1500);
         }
 
-        function assinarContrato() {
+        async function assinarContrato(botao) {
+            const estado = vagaModalState;
+            if (botao) {
+                const restaurar = emVoo(botao, 'Assinando…');
+                await aguardar(800);
+                restaurar();
+                if (!vooDoModalValido(estado, 'contrato') || escalaDaVaga(estado.vagaId)) return;
+            }
             const vaga = vagasData.find(v => v.id === vagaModalState.vagaId);
             const ctx = contextoVaga(vaga);
             escalas.push({
@@ -5369,9 +5398,16 @@
             showSuccessToast("Contrato assinado");
         }
 
-        function enviarNotaFiscal(escId) {
+        async function enviarNotaFiscal(escId, botao) {
             const esc = escalas.find(e => e.id === escId);
             if (!esc) return;
+            if (botao) {
+                const restaurar = emVoo(botao, 'Enviando…');
+                await aguardar(700);
+                restaurar();
+                // Sair da aba no meio do voo cancela sem efeito
+                if (esc.status !== 'concluido' || currentTab !== 'freelas') return;
+            }
             esc.status = 'nota_enviada';
             esc.pagamentoAte = somarDiasUteis(agora(), 2).toISOString();
             salvarEscalas();
@@ -5401,9 +5437,9 @@
             const linhas = daCasa.map(({ e, ctx }) => {
                 let acao;
                 if (e.status === 'assinado') {
-                    acao = `<button onclick="registrarTurno('${e.id}', 'entrada')" class="press btn-secondary claro shrink-0">Registrar entrada</button>`;
+                    acao = `<button onclick="registrarTurno('${e.id}', 'entrada', this)" class="press btn-secondary claro shrink-0">Registrar entrada</button>`;
                 } else if (e.status === 'em_turno') {
-                    acao = `<button onclick="registrarTurno('${e.id}', 'saida')" class="press btn-secondary shrink-0">Registrar saída</button>`;
+                    acao = `<button onclick="registrarTurno('${e.id}', 'saida', this)" class="press btn-secondary shrink-0">Registrar saída</button>`;
                 } else {
                     acao = `<span class="t-foot shrink-0 ${e.status === 'nota_enviada' ? 'c-live' : 'c-accent'}">${e.status === 'nota_enviada' ? 'Nota recebida' : 'Aguardando nota'}</span>`;
                 }
@@ -5431,7 +5467,7 @@
                         <div class="row justify-between"><span class="t-sub">Retenções (MEI)</span><span class="t-sub font-semibold">${fmtReais(0)}</span></div>
                         <div class="row justify-between"><span class="t-sub">Notas fiscais recebidas</span>
                             <span class="t-sub font-semibold ${notas === fechados.length ? 'c-live' : 'c-accent'}">${notas}/${fechados.length}</span></div>
-                        <button onclick="showSuccessToast('Planilha enviada à contabilidade')" class="press row">
+                        <button onclick="exportarContabilidade(this)" class="press row c-accent">
                             <i data-lucide="file-spreadsheet" class="w-5 h-5 c-accent"></i><span class="t-body c-accent">Exportar para a contabilidade</span>
                         </button>
                     </div>
@@ -5445,9 +5481,17 @@
                 </section>`;
         }
 
-        function registrarTurno(escId, tipo) {
+        async function registrarTurno(escId, tipo, botao) {
             const esc = escalas.find(e => e.id === escId);
             if (!esc) return;
+            if (botao) {
+                const statusAntes = esc.status;
+                const restaurar = emVoo(botao, 'Registrando…');
+                await aguardar(600);
+                restaurar();
+                // Troca de aba do painel durante o voo cancela sem efeito
+                if (esc.status !== statusAntes || currentTab !== 'gerente' || abaGerente !== 'equipe') return;
+            }
             if (tipo === 'entrada') {
                 esc.status = 'em_turno';
                 esc.checkinEm = agora().toISOString();
@@ -5459,6 +5503,15 @@
             }
             salvarEscalas();
             openManagerDashboard();
+        }
+
+        // Na demo não há planilha de verdade: o voo simula o envio antes do aviso.
+        async function exportarContabilidade(botao) {
+            const restaurar = emVoo(botao, '<span class="t-body">Exportando…</span>');
+            await aguardar(900);
+            restaurar();
+            if (currentTab !== 'gerente' || abaGerente !== 'equipe') return;
+            showSuccessToast('Planilha enviada à contabilidade');
         }
 
         // --- VIBES: FEED DE VÍDEOS (TikTok de Baladas) ---
