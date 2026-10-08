@@ -483,7 +483,7 @@
                     </button>
                 </div>
 
-                <form id="reservation-form" onsubmit="handleReservationSubmit(event)" class="space-y-5 pt-3">
+                <form id="reservation-form" novalidate onsubmit="handleReservationSubmit(event)" class="space-y-5 pt-3">
                     <input type="hidden" id="modal-event-id">
                     <input type="hidden" id="modal-house-id">
                     <input type="hidden" id="modal-tipo">
@@ -494,12 +494,14 @@
                         <div class="group-list on-fill">
                             <label id="res-linha-nome" class="row">
                                 <span id="res-nome-rotulo" class="t-body shrink-0">Nome na lista</span>
-                                <input type="text" id="res-name" required autocomplete="name" placeholder="Seu nome" class="bare t-body c-2 flex-1 text-right">
+                                <input type="text" id="res-name" autocomplete="name" placeholder="Seu nome" aria-describedby="res-name-erro" oninput="limparErroCampo('res-name')" class="bare t-body c-2 flex-1 text-right">
                             </label>
+                            <p id="res-name-erro" role="alert" class="msg-erro px-4 pb-3 hidden"></p>
                             <label id="res-linha-tel" class="row">
                                 <span class="t-body shrink-0">WhatsApp</span>
-                                <input type="tel" id="res-phone" required autocomplete="tel" placeholder="(62) 99999-9999" class="bare t-body c-2 flex-1 text-right">
+                                <input type="tel" id="res-phone" inputmode="numeric" autocomplete="tel-national" placeholder="(62) 99999-9999" aria-describedby="res-phone-erro" oninput="this.value = mascararTelefone(this.value); limparErroCampo('res-phone')" class="bare t-body c-2 flex-1 text-right">
                             </label>
+                            <p id="res-phone-erro" role="alert" class="msg-erro px-4 pb-3 hidden"></p>
                             <div id="res-linha-pessoas" class="row justify-between" style="min-height: 56px;">
                                 <span class="t-body">Pessoas</span>
                                 <div class="flex items-center gap-3.5">
@@ -3293,8 +3295,8 @@
         // Lista é o nome de uma pessoa e uma condição de entrada. Mesa é um
         // lugar para um grupo, por isso só ela pergunta quantas pessoas vão.
         const GARANTIAS = {
-            lista: { acao: 'Entrar na lista', feito: 'Você está na lista', desfazer: 'Retirar nome da lista', pergunta: 'Retirar seu nome da lista?', confirma: 'Retirar nome', desfeito: 'Nome retirado da lista' },
-            mesa: { acao: 'Reservar mesa', feito: 'Mesa reservada', desfazer: 'Cancelar reserva', pergunta: 'Cancelar a reserva da mesa?', confirma: 'Cancelar reserva', desfeito: 'Reserva cancelada' }
+            lista: { acao: 'Entrar na lista', feito: 'Você está na lista', desfazer: 'Retirar nome da lista', pergunta: 'Retirar seu nome da lista?', confirma: 'Retirar nome', desfazendo: 'Retirando…', desfeito: 'Nome retirado da lista' },
+            mesa: { acao: 'Reservar mesa', feito: 'Mesa reservada', desfazer: 'Cancelar reserva', pergunta: 'Cancelar a reserva da mesa?', confirma: 'Cancelar reserva', desfazendo: 'Cancelando…', desfeito: 'Reserva cancelada' }
         };
 
         // Cada noite diz o que oferece; sem isso, vale o natural da casa.
@@ -3400,8 +3402,30 @@
             lucide.createIcons();
         }
 
+        // Enquanto a confirmação está em voo, fechar (fundo, X, Escape) não faz nada.
+        let enviandoReserva = false;
+
         function closeReservationModal() {
+            if (enviandoReserva) return;
             document.getElementById('reservation-modal').classList.add('hidden');
+        }
+
+        function marcarErroCampo(id, msg) {
+            const input = document.getElementById(id);
+            input.closest('.row').classList.add('campo-erro');
+            input.setAttribute('aria-invalid', 'true');
+            const erro = document.getElementById(id + '-erro');
+            erro.textContent = msg;
+            erro.classList.remove('hidden');
+        }
+
+        function limparErroCampo(id) {
+            const input = document.getElementById(id);
+            input.closest('.row').classList.remove('campo-erro');
+            input.removeAttribute('aria-invalid');
+            const erro = document.getElementById(id + '-erro');
+            erro.textContent = '';
+            erro.classList.add('hidden');
         }
 
         // Visitante escolhe a noite e as pessoas sem conta. Nome e WhatsApp
@@ -3409,18 +3433,19 @@
         function prepararQuemVai() {
             const logado = sessao.logado;
             ['res-linha-nome', 'res-linha-tel'].forEach(id => document.getElementById(id).classList.toggle('hidden', !logado));
-            document.getElementById('res-name').required = logado;
-            document.getElementById('res-phone').required = logado;
             document.getElementById('res-name').value = logado ? sessao.nome : '';
-            document.getElementById('res-phone').value = logado ? sessao.telefone : '';
+            document.getElementById('res-phone').value = logado ? mascararTelefone(sessao.telefone) : '';
+            limparErroCampo('res-name');
+            limparErroCampo('res-phone');
             document.getElementById('res-login-nota').classList.toggle('hidden', logado);
             // Lista de visitante não tem nada a preencher antes do login
             const lista = document.getElementById('modal-tipo').value === 'lista';
             document.getElementById('res-quem-vai').classList.toggle('hidden', lista && !logado);
         }
 
-        function handleReservationSubmit(event) {
+        async function handleReservationSubmit(event) {
             event.preventDefault();
+            if (enviandoReserva) return;
 
             // O login acontece por cima da reserva, que continua aberta embaixo
             // com a mesma noite e as mesmas pessoas. Na volta, falta um toque.
@@ -3439,6 +3464,16 @@
             const houseId = document.getElementById('modal-house-id').value;
             const name = document.getElementById('res-name').value.trim();
             const phone = document.getElementById('res-phone').value.trim();
+
+            // Validação própria (o form é novalidate): mensagem sob o campo, foco no primeiro inválido.
+            const invalidos = [];
+            if (name.length < 2) { marcarErroCampo('res-name', 'Diga seu nome para a lista.'); invalidos.push('res-name'); }
+            if (digitos(phone).length !== 11) { marcarErroCampo('res-phone', 'Celular com DDD, 11 números.'); invalidos.push('res-phone'); }
+            if (invalidos.length) {
+                document.getElementById(invalidos[0]).focus();
+                return;
+            }
+
             const tipo = document.getElementById('modal-tipo').value;
             const guests = tipo === 'mesa' ? parseInt(document.getElementById('res-guests').value, 10) : 1;
 
@@ -3461,6 +3496,12 @@
                 guestsCount: guests,
                 status: 'confirmada'
             };
+
+            enviandoReserva = true;
+            const restaurar = emVoo(document.getElementById('res-submit'), 'Confirmando…');
+            await aguardar(800);
+            enviandoReserva = false;
+            restaurar();
 
             reservations.unshift(newRes);
             sessao.nome = name;
@@ -3668,7 +3709,7 @@
                     </div>` : ''}
                     ${!passou ? `
                     <div class="border-t-[0.5px] border-white/10">
-                        <button onclick="cancelReserva('${r.id}')" class="press w-full h-12 t-sub c-danger">${GARANTIAS[tipoDaReserva(r)].desfazer}</button>
+                        <button onclick="cancelReserva('${r.id}')" data-cancelar="${r.id}" class="press w-full h-12 t-sub c-danger flex items-center justify-center gap-2">${GARANTIAS[tipoDaReserva(r)].desfazer}</button>
                     </div>` : ''}
                 </article>`;
         }
@@ -3731,6 +3772,12 @@
             const g = GARANTIAS[tipoDaReserva(reservations.find(r => r.id === id))];
             const ok = await confirmar({ titulo: g.pergunta, acao: g.confirma, perigo: true });
             if (!ok) return;
+            const botao = document.querySelector(`[data-cancelar="${id}"]`);
+            if (botao) {
+                const restaurar = emVoo(botao, g.desfazendo);
+                await aguardar(600);
+                restaurar();
+            }
             const rIndex = reservations.findIndex(r => r.id === id);
             if (rIndex !== -1) {
                 reservations[rIndex].status = 'cancelada';
