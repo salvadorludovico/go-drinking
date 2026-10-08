@@ -124,7 +124,7 @@ Ordem: T1 → T10 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T1
   - Limpeza: apagar `--secondary`, `--bg-card`, `--border-color`, `--border-radius`, `--button-radius` e o bloco `theme` do `tailwind.config`, depois de confirmar por grep que nada os lê (`bg-theme-bg` em 299 passa a `bg-black`). Não mexer nos campos de tema das casas (dados, não estilo).
   - Verificação: todas as capturas `ref-*` refeitas e comparadas; a diferença aceitável é zero ou subpixel.
 
-- [ ] **T11. Ritmo: cabeçalhos, seções, raios e meios-passos** (última, porque é a mais subjetiva)
+- [x] **T11. Ritmo: cabeçalhos, seções, raios e meios-passos** — commit `232c371`. Espaçamento: 79 → 63 valores distintos; meios-passos 66 → 24 usos (17 são `gap-0.5`); raios Tailwind 10 → 7. Decisões de julgamento: Agenda e Ingressos ganharam uma linha vazia de 36px para o h1 ficar no mesmo y em todas as abas; Gerente passou a "Sair" na linha de cima e subtítulo abaixo do h1; chip de dia da Agenda virou pílula de duas linhas.
   - Cabeçalho de aba único: linha de 36px (data ou voltar à esquerda, avatar à direita) + `h1.t-large` + subtítulo `t-sub c-2`, com o mesmo `space-y` em Hoje (312–320), Agenda (350–353), Ingressos (382–383), Freelas (4957–4963) e Gerente (4528). Gap entre seções `space-y-8` em todas as abas e na Casa.
   - Título de seção único: `secaoHtml` (1681–1688, `t-title2`) também na Casa (2965, 2973, 3142, 3161, 3184, 3203) e no Gerente (5213, 5262). `t-title3` fica reservado para título dentro de cartão; se sobrar sem uso, apagar.
   - Raios por papel: 28 sheet · 24 herói · 18 cartão e `.group-list` (120: 16→18) · 14 aninhado · 12 thumb · `full` pílulas. Trocar `rounded-[22px]` (3596, 4142, 4669), `rounded-2xl` (1862, 2204), `rounded-[10px]` (336, 3168).
@@ -137,6 +137,21 @@ Ordem: T1 → T10 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T1
 
 - [ ] **TF. Revisão final (Fable)**: repetir todas as capturas `ref-*` nas três larguras, comparar lado a lado, ler o diff completo, rodar a checagem de `alert(|confirm(|prompt(|<select` e registrar a seção "Revisão" deste plano.
 
-## Revisão
+## Revisão (2026-10-08, Fable)
 
-_(preenchida ao fim)_
+**Resultado.** As 12 tarefas foram executadas e commitadas na branch `worktree-ux-cinco-estados`, 20 commits sobre `main` (`d79f3cc`). Só `index.html` mudou no código (+1058 / −315 linhas, 5360 → 5788). Nenhum `alert()`, `confirm()`, `prompt()`, `<select>` ou picker nativo. Sintaxe do JavaScript conferida com `new Function` em cada bloco.
+
+**O que o padrão pede e como ficou.**
+- Carregando: todas as 16 ações que mutam estado têm voo (spinner + texto, botão desabilitado, 500 a 900 ms): reserva, cancelar, receber código, verificar código, entrar, validar entrada (com Desfazer), confirmar leitura, candidatar, assinar, nota, turno, exportar. Mapa e vídeo têm camada de carregamento; rota tem "Traçando rota…".
+- Erro: reserva e login com mensagem inline (`.campo-erro` + `.msg-erro`), sem balão nativo; código da demo é `2468`, qualquer outro dá erro; toast com três tipos; compartilhar avisa quando falha; vídeo ausente vira "Vídeo indisponível".
+- Vazio: Vibes, busca da portaria, painel sem noite, simulação sem pendentes e escalas sem contrato ganharam texto; os vazios existentes passaram por dois helpers.
+- Celular: sheets travam o fundo, sobem com o teclado (`--teclado` via `visualViewport`), usam `dvh`; herói e capa encolhem em tela baixa; alvos de 44px; checkbox, foco e "x" da busca próprios; `user-scalable` liberado; `px-safe` nas barras fixas.
+- Ritmo: cabeçalho de aba único, `space-y-8` entre seções, um título de seção, raios por papel, tokens e classes (`.card`, `.chip-*`, `.c-1b`, `.btn-primary.lg`) no lugar de cores e tamanhos soltos.
+
+**Capturas.** `scratchpad/shots/` da sessão (não versionado): `ref-*` (antes), `t1-*` a `t11-*` (por tarefa) e `fim-*` (depois, 320/390/430). Todas abertas e conferidas.
+
+**Não verificado em dispositivo real** (headless não cobre): teclado do iOS sobre as sheets, caminho MapLibre do mapa (sem WebGL), long-press desligado, paisagem com notch, `:hover`.
+
+**Revisão de código do diff** (subagent Opus 5.5, somente leitura, diff inteiro): nenhum bloqueante; nenhuma exceção em tempo de execução, estado preso, listener duplicado ou `innerHTML` sem escape. Sete achados, todos corrigidos no commit final: "Traçando rota…" preso no cartão do pino ao trocar de pino antes da resposta; contrato assinado mesmo desmarcando o aceite durante o voo; "+"/"−" de pessoas durante o "Confirmando…" trocavam o rótulo e eram ignorados; "Voltar" durante o "Entrando…" não cancelava o login; zoom de pinça com sheet aberta deslocava a sheet (`vv.scale`); "Carregando mapa…" piscava a cada minuto na Casa (mesma casa não mostra a camada de novo); "Desfazer" na aba Ler QR reiniciava a câmera.
+
+**Fora desta rodada, registrado:** `--label-3` (#8e8e93) e `--label-2` (#98989f) continuam quase iguais; a decisão de fundir fica para o Salvador. Redesenhar o painel do gerente perde o texto da busca (já era assim). "· estimativa" na rota aparece sempre que a linha é o arco. Busca passou a ignorar acentos (fix fora do plano, pequeno).
