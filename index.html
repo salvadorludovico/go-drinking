@@ -259,7 +259,7 @@
 
         /* Alturas que encolhem em tela baixa; vh antes como fallback de dvh */
         .capa-alt { height: min(460px, 58vh); height: min(460px, 58dvh); }
-        .rail-capa { aspect-ratio: 5 / 6; height: auto; }
+        .rail-capa { aspect-ratio: 1 / 1; height: auto; }
 
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -1860,6 +1860,15 @@
             return `<button onclick="abrirAgenda('${sel}')" class="press link-44 -my-3 t-sub c-accent shrink-0">${texto}</button>`;
         }
 
+        // Uma linha com a primeira promoção ainda válida da noite; vazio quando não há.
+        // No carrossel (soNome) não cabe o horário ao lado do nome; fica só a cor de urgência.
+        function linhaPromoCurta(st, ref, soNome) {
+            const x = promosDaNoite(st.prog, st.occ, ref).find(p => p.st.estado !== 'expirada');
+            if (!x) return '';
+            const t = tempoPromoAgenda(x.promo, x.st, st.estado);
+            return `<span class="t-foot truncate ${t.classe}">${x.promo.nome}${soNome ? '' : ' · ' + t.texto}</span>`;
+        }
+
         function cartaoRailHtml(house, st, ref) {
             const ent = infoEntrada(st.prog, st.occ, ref);
             const quando = st.estado === 'agora' ? `até ${fmtHora(st.fim)}` : `às ${fmtHora(st.inicio)}`;
@@ -1872,6 +1881,7 @@
                     <span class="flex flex-col gap-0.5 px-0.5 min-w-0">
                         <span class="t-sub font-semibold truncate">${nomeCasa(house)}</span>
                         <span class="t-foot c-2 truncate">${nomeNoite(st.prog)} · ${quando}</span>
+                        ${linhaPromoCurta(st, ref, true)}
                     </span>
                 </button>`;
         }
@@ -1887,6 +1897,7 @@
                             <span class="t-callout font-semibold truncate">${nomeNoite(st.prog)}</span>
                             <span class="t-foot c-2 truncate">${nomeCasa(house)} · ${house.setor}</span>
                             <span class="t-foot c-1b truncate">${quando} · ${ent.curto}</span>
+                            ${linhaPromoCurta(st, ref)}
                         </span>
                         <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0"></i>
                     </button>`;
