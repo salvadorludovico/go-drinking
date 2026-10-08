@@ -3301,10 +3301,10 @@
             } else if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(
                     () => mostrarToast('Link copiado', { tipo: 'neutro' }),
-                    () => mostrarToast('Não deu para compartilhar neste navegador.', { tipo: 'erro' })
+                    () => mostrarToast('Não deu para compartilhar aqui.', { tipo: 'erro' })
                 );
             } else {
-                mostrarToast('Não deu para compartilhar neste navegador.', { tipo: 'erro' });
+                mostrarToast('Não deu para compartilhar aqui.', { tipo: 'erro' });
             }
         }
 
