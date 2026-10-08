@@ -62,13 +62,13 @@ Ordem: T1 → T10 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T1
   - `cancelReserva` (3692): depois do `confirmar()`, em voo no botão "Retirar nome" por 600 ms.
   - Verificação: capturas `t2-reserva-erro` (submeter vazio logado; usar `pre` para semear sessão logada, ver `definirSessaoDemo`), `t2-reserva-voo` (capturar durante os 800 ms com `wait` curto), em 320 e 390.
 
-- [ ] **T3. Login por celular: envio, verificação e erro de código**
+- [x] **T3. Login por celular: envio, verificação e erro de código** — commit `149b09b`. Código da demo: `CODIGO_DEMO = '2468'`. Fechar o login no meio de um voo cancela sem efeito (cada função confere a etapa depois da espera). `.otp-caixa.erro` antiga ficou sem uso no CSS (remover na T11).
   - `enviarCodigo` (3970): em voo "Enviando…" por 900 ms antes de trocar para a etapa do código. Enter com número incompleto mostra `.msg-erro` "Faltam números. Celular com DDD." sob o campo, em vez de retornar em silêncio (3971).
   - Código: o aviso "Simulação: nenhuma mensagem é enviada." passa a dizer também o código válido da demo, por exemplo "Simulação: o código é 2468." Ao completar 4 dígitos, etapa "Verificando…" (spinner + texto no lugar do botão de reenviar ou abaixo das caixas) por 700 ms. Código diferente do válido: caixas com `.otp-caixa.erro` (246, já existe), `.msg-erro` "Código incorreto. Confira e tente de novo.", campo limpo e foco de volta. Reenviar continua com a contagem.
   - `concluirLogin` (4017): "Continuar" em voo "Entrando…" 600 ms. `sairDaConta` (4033) passa por `confirmar({ titulo: 'Sair da conta?', acao: 'Sair', perigo: true })`.
   - Verificação: capturas `t3-login-enviando`, `t3-login-verificando`, `t3-login-codigo-erro`, em 320 e 390.
 
-- [ ] **T4. Portaria e painel do gerente**
+- [x] **T4. Portaria e painel do gerente** — commit `67e9ea4`. Extras: toast neutro "Entrada desfeita"; a busca sem resultado esconde a caixa da lista. Conhecido e não mexido: redesenhar o painel perde o texto da busca.
   - `confirmPresence` (4642): botão "Validar entrada" em voo "Validando…" 500 ms; depois toast `sucesso` com ação "Desfazer" (5 s) que reverte `marcarPresenca`.
   - `confirmarLeitura` (4788): em voo "Confirmando…" 500 ms antes de re-renderizar.
   - `filtrarListaGerente` (4626): sem resultado, mostrar `vazioCompactoHtml('Nenhum nome com "<busca>".')`.
@@ -76,12 +76,12 @@ Ordem: T1 → T10 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T1
   - Leitor QR: quando não há pendentes, a seção "Simule a leitura" mostra uma linha `t-foot c-3` "Nenhum ingresso pendente para simular." em vez de sumir (4657).
   - Verificação: capturas `t4-lista-busca-vazia`, `t4-painel-sem-noite`, `t4-toast-desfazer` (modo gerente: ver `toggleManagerMode` 4291; semear reservas com `pre` em `gyn_reservas`).
 
-- [ ] **T5. Freelas: mesma régua para todas as ações**
+- [x] **T5. Freelas: mesma régua para todas as ações** — commit `7fc1753` + fix do texto do vazio. Candidatura sem assinatura fica em memória (`candidaturas`), não em `localStorage`.
   - `assinarContrato` (5174), `enviarNotaFiscal` (5192), `registrarTurno` (5269), "Exportar para a contabilidade" (5252): em voo com texto ("Assinando…", "Enviando…", "Registrando…", "Exportando…") entre 500 e 900 ms, depois o toast existente. "Candidatar" (5164) passa a usar `.spinner.lg` e `emVoo` em vez do anel inline.
   - "Minhas escalas" (4990): quando vazio e a pessoa já se candidatou/assinou, mostrar `vazioCompactoHtml('Nenhuma escala ainda. Quando uma casa aprovar você, ela aparece aqui.')`; sem candidatura, a seção continua sem aparecer.
   - Verificação: capturas `t5-vaga-assinando`, `t5-escalas-vazio`.
 
-- [ ] **T6. Vibes e Mapa: vazio, erro e carregamento**
+- [x] **T6. Vibes e Mapa: vazio, erro e carregamento** — commit `76da2b3` + fix do texto do toast. Não verificado: caminho MapLibre (headless sem WebGL); "· estimativa" aparece sempre que a linha é o arco, mesmo com minutos reais do OSRM.
   - Vibes (`renderVibes` 5286): sem casa com vídeo, `vazioHtml` com ícone `video-off`, "Nenhum vídeo hoje", "As casas publicam os vídeos da noite por aqui." e botão "Ver agenda". Cada `<video>` ganha `onerror`: o cartão troca para o poster com a logo e uma linha "Vídeo indisponível" (sem botão quebrado). Eventos `waiting`/`playing` ligam e desligam um `.spinner.lg` central com texto "Carregando…".
   - Mapa (`criarMapaBase` 2496, `montarMapaCasa` 2988): sobre a moldura, uma camada `glass` com `.spinner` + "Carregando mapa…" até o evento `load` do Leaflet ou do estilo MapLibre (com teto de 6 s; passado o teto, some sem erro, porque os tiles Esri cobrem o fallback).
   - Rota (`desenharRota` 2727, `buscarRotaReal` 2276): no cartão do pino, "Traçando rota…" enquanto a chamada ao OSRM (Open Source Routing Machine) está em curso; se cair no arco ilustrativo, a linha de tempo recebe "· estimativa" em `c-3`.
