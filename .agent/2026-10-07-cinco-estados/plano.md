@@ -90,14 +90,14 @@ Ordem: T1 → T10 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T1
 
 ### Eixo 2: celular e estilos padrão do navegador
 
-- [ ] **T7. Sheets no celular: teclado, elástico e altura**
+- [x] **T7. Sheets no celular: teclado, elástico e altura** — commit `f8aad53`. `sheetsAbertas` (Set) faz o papel do contador; a altura máxima desconta `--teclado`. Teclado real do iOS não verificado em dispositivo. Caso raro conhecido: desligar o modo gerente com o menu aberto restaura o scroll da view anterior.
   - Toda sheet (`#reservation-modal` 479, menu 554, login 624, vaga 540, escolha 616): `max-height` em `dvh` com fallback `vh` na linha anterior; `.sheet { overscroll-behavior: contain }`.
   - Travar o documento ao abrir qualquer sheet e destravar ao fechar: helper `travarFundo()`/`destravarFundo()` com `body { position: fixed; top: -scrollY; width: 100% }` e restauração do `scrollY`. Usar em `openReservationModal`, `openMenu`, `abrirLogin`, `abrirEscolha`, `openVagaModal` e nos respectivos `close*`/`fechar*`. Vibes e Onboarding continuam com o mecanismo que já têm.
   - Teclado do iOS: um único listener em `visualViewport` (`resize` e `scroll`) que, quando há sheet aberta, define `--teclado` (altura ocupada) e as sheets usam `bottom: var(--teclado, 0px)`. Sem `visualViewport`, nada muda.
   - `enterkeyhint` nos inputs: reserva nome `next`, WhatsApp `done`, telefone do login `send`, código `done`, nome do login `done`, buscas `search`.
   - Verificação: capturas `t7-reserva-aberta-320`, `t7-login-aberto-320` (grabber e "x" visíveis; conteúdo longo rola dentro da sheet). Teclado não se simula no headless; registrar como "não verificado em dispositivo".
 
-- [ ] **T8. Controles e toque: nada nativo sobrevive, alvos de 44 px**
+- [x] **T8. Controles e toque: nada nativo sobrevive, alvos de 44 px** — commit `4f5753f`. Foco com `:has(input:focus-visible)` (Safari 15.4+) em vez de `:focus-within`, para toques em linhas com checkbox não acenderem o anel. Tab bars com `px-safe.rente` (sem mínimo de 16px). Não verificado em dispositivo: long-press e paisagem com notch.
   - Checkbox do contrato (5141): classe `.check` própria com `appearance: none`, 24 px, borda `--fill-3`, marcado com fundo `--live` e check em SVG inline (`::after`); área de toque pela `.row`.
   - Foco: remover `outline: none !important` de `input:focus` (248–251); `.search-field:focus-within, .row:focus-within { box-shadow: inset 0 0 0 1.5px var(--primary) }`; `.group-list :focus-visible { outline-offset: -2px }`.
   - `img, .press, .pino, .tab-btn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none }`; o cartão da Agenda (2135) deixa de ser `<a href>` e vira `<button type="button">` com o mesmo `onclick`.
