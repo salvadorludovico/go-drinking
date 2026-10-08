@@ -1585,6 +1585,11 @@
             return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
+        // Para buscar: minúsculas e sem acento, assim "moi" acha "Môi"
+        function normalizarBusca(s) {
+            return String(s == null ? '' : s).toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[̀-ͯ]/g, '');
+        }
+
         // "Hoje", "Amanhã" ou "Qua, 23 set"
         function diaRelativo(d, ref) {
             ref = ref || agora();
@@ -1975,10 +1980,10 @@
         }
 
         function htmlBusca(termo, ref) {
-            const t = termo.toLocaleLowerCase('pt-BR');
+            const t = normalizarBusca(termo);
             const achou = housesData.filter(h =>
                 [h.nome, h.especialidade, h.setor, ...(h.programacao || []).map(p => p.nome)]
-                    .some(s => (s || '').toLocaleLowerCase('pt-BR').includes(t)));
+                    .some(s => normalizarBusca(s).includes(t)));
 
             if (!achou.length) {
                 return `
@@ -4875,7 +4880,7 @@
                     : `<button onclick="confirmPresence('${r.id}', this)" class="press btn-secondary claro shrink-0">Validar entrada</button>`;
                 const quando = r.eventDate ? diaRelativo(new Date(r.eventDate)) : '';
                 return `
-                    <div class="row" style="min-height: 64px;" data-busca="${escHtml((r.userName + ' ' + (r.userPhone || '')).toLocaleLowerCase('pt-BR'))}">
+                    <div class="row" style="min-height: 64px;" data-busca="${escHtml(normalizarBusca(r.userName + ' ' + (r.userPhone || '')))}">
                         <span class="flex-1 min-w-0 flex flex-col gap-0.5">
                             <span class="t-callout font-semibold truncate">${escHtml(r.userName)}</span>
                             <span class="t-foot c-2 truncate">${rotuloGarantia(r)}${r.userPhone ? ' · ' + escHtml(r.userPhone) : ''}</span>
@@ -4899,7 +4904,7 @@
         }
 
         function filtrarListaGerente(termo) {
-            const t = termo.trim().toLocaleLowerCase('pt-BR');
+            const t = normalizarBusca(termo.trim());
             let visiveis = 0;
             document.querySelectorAll('#lista-gerente [data-busca]').forEach(el => {
                 const some = !!t && !el.dataset.busca.includes(t);
