@@ -161,7 +161,12 @@
         .tab-btn span.rotulo { font-size: 10px; font-weight: 600; }
 
         .grabber { width: 36px; height: 5px; border-radius: 3px; background: #48484a; margin: 0 auto; }
-        .sheet { animation: sheet-in 0.38s cubic-bezier(0.32, 0.72, 0, 1); }
+        .sheet { animation: sheet-in 0.38s cubic-bezier(0.32, 0.72, 0, 1); overscroll-behavior: contain; }
+        /* Sobe junto com o teclado do iOS (--teclado vem do visualViewport) e cabe no que sobra da tela. */
+        .sheet-teclado { bottom: var(--teclado, 0px); }
+        .sheet-alt-92 { max-height: calc(92vh - var(--teclado, 0px)); max-height: calc(92dvh - var(--teclado, 0px)); }
+        .sheet-alt-90 { max-height: calc(90vh - var(--teclado, 0px)); max-height: calc(90dvh - var(--teclado, 0px)); }
+        .sheet-alt-70 { max-height: calc(70vh - var(--teclado, 0px)); max-height: calc(70dvh - var(--teclado, 0px)); overscroll-behavior: contain; }
         .backdrop { animation: fade-in 0.25s ease; }
         .view-in { animation: fade-in 0.22s ease; }
         @keyframes sheet-in { from { transform: translateY(100%); } to { transform: none; } }
@@ -313,7 +318,7 @@
                     <div id="hoje-chips" class="rail -mx-4 gap-2" style="display: none"></div>
                     <label class="search-field">
                         <i data-lucide="search" class="w-[17px] h-[17px] shrink-0"></i>
-                        <input type="search" id="search-input" oninput="searchFilter()" placeholder="Casa, festa ou estilo" aria-label="Buscar casas e festas" autocomplete="off" class="bare flex-1 t-body text-white">
+                        <input type="search" id="search-input" enterkeyhint="search" oninput="searchFilter()" placeholder="Casa, festa ou estilo" aria-label="Buscar casas e festas" autocomplete="off" class="bare flex-1 t-body text-white">
                     </label>
                 </div>
 
@@ -470,7 +475,7 @@
         <!-- ENTRAR NA LISTA / RESERVAR (painel que sobe do rodapé) -->
         <div id="reservation-modal" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true" aria-labelledby="modal-event-title">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeReservationModal()"></div>
-            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
+            <div class="sheet sheet-teclado sheet-alt-92 absolute inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
                 <div class="grabber"></div>
                 <div class="flex items-center gap-3 pt-4 pb-2">
                     <img id="modal-house-logo" alt="" class="w-11 h-11 rounded-full object-cover bg-[#2c2c2e] shrink-0">
@@ -494,12 +499,12 @@
                         <div class="group-list on-fill">
                             <label id="res-linha-nome" class="row">
                                 <span id="res-nome-rotulo" class="t-body shrink-0">Nome na lista</span>
-                                <input type="text" id="res-name" autocomplete="name" placeholder="Seu nome" aria-describedby="res-name-erro" oninput="limparErroCampo('res-name')" class="bare t-body c-2 flex-1 text-right">
+                                <input type="text" id="res-name" autocomplete="name" enterkeyhint="next" placeholder="Seu nome" aria-describedby="res-name-erro" oninput="limparErroCampo('res-name')" class="bare t-body c-2 flex-1 text-right">
                             </label>
                             <p id="res-name-erro" role="alert" class="msg-erro px-4 pb-3 hidden"></p>
                             <label id="res-linha-tel" class="row">
                                 <span class="t-body shrink-0">WhatsApp</span>
-                                <input type="tel" id="res-phone" inputmode="numeric" autocomplete="tel-national" placeholder="(62) 99999-9999" aria-describedby="res-phone-erro" oninput="this.value = mascararTelefone(this.value); limparErroCampo('res-phone')" class="bare t-body c-2 flex-1 text-right">
+                                <input type="tel" id="res-phone" inputmode="numeric" enterkeyhint="done" autocomplete="tel-national" placeholder="(62) 99999-9999" aria-describedby="res-phone-erro" oninput="this.value = mascararTelefone(this.value); limparErroCampo('res-phone')" class="bare t-body c-2 flex-1 text-right">
                             </label>
                             <p id="res-phone-erro" role="alert" class="msg-erro px-4 pb-3 hidden"></p>
                             <div id="res-linha-pessoas" class="row justify-between" style="min-height: 56px;">
@@ -531,7 +536,7 @@
         <!-- MODAL DA VAGA: TERMOS → CONTRATO → ASSINADO -->
         <div id="vaga-modal" class="fixed inset-0 z-[60] flex items-end justify-center hidden" role="dialog" aria-modal="true">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeVagaModal()"></div>
-            <div class="sheet bg-[var(--fill-1)] w-full max-w-md rounded-t-[28px] px-5 pt-2 relative max-h-[90vh] overflow-y-auto no-scrollbar pb-safe">
+            <div class="sheet sheet-teclado sheet-alt-90 bg-[var(--fill-1)] w-full max-w-md rounded-t-[28px] px-5 pt-2 relative overflow-y-auto no-scrollbar pb-safe">
                 <div class="grabber mb-5"></div>
                 <button onclick="closeVagaModal()" aria-label="Fechar" class="press absolute top-5 right-5 w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center">
                     <i data-lucide="x" class="w-4 h-4 text-neutral-400"></i>
@@ -545,7 +550,7 @@
         <!-- MENU DO AVATAR: conta e ferramentas de demonstração -->
         <div id="menu-sheet" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true" aria-label="Perfil e demonstração">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeMenu()"></div>
-            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
+            <div class="sheet sheet-teclado sheet-alt-92 absolute inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
                 <div class="grabber"></div>
                 <div class="flex justify-end pt-2">
                     <button onclick="closeMenu()" class="press t-headline c-accent h-11 px-1">OK</button>
@@ -606,8 +611,8 @@
         <!-- CONFIRMAR / ESCOLHER: substituem confirm() e <select> do sistema -->
         <div id="escolha-sheet" class="fixed inset-0 z-[65] hidden" role="dialog" aria-modal="true" aria-labelledby="escolha-titulo">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="fecharEscolha(null)"></div>
-            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto px-2 pb-safe space-y-2">
-                <div id="escolha-corpo" class="bg-[var(--fill-1)] rounded-[14px] overflow-hidden max-h-[70vh] overflow-y-auto no-scrollbar"></div>
+            <div class="sheet sheet-teclado absolute inset-x-0 max-w-md mx-auto px-2 pb-safe space-y-2">
+                <div id="escolha-corpo" class="sheet-alt-70 bg-[var(--fill-1)] rounded-[14px] overflow-hidden overflow-y-auto no-scrollbar"></div>
                 <button type="button" onclick="fecharEscolha(null)" class="press w-full h-14 rounded-[14px] bg-[var(--fill-1)] t-headline c-accent">Cancelar</button>
             </div>
         </div>
@@ -615,7 +620,7 @@
         <!-- ENTRAR COM CELULAR: sobe por cima da reserva e devolve a pessoa para ela -->
         <div id="login-sheet" class="fixed inset-0 z-[65] hidden" role="dialog" aria-modal="true" aria-labelledby="login-titulo">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="fecharLogin()"></div>
-            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
+            <div class="sheet sheet-teclado sheet-alt-92 absolute inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
                 <div class="grabber"></div>
                 <div class="flex items-center justify-between pt-2 h-11">
                     <button id="login-voltar" onclick="voltarLogin()" aria-label="Voltar" class="press w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center c-2 invisible">
@@ -3430,6 +3435,7 @@
             }
 
             document.getElementById('reservation-modal').classList.remove('hidden');
+            travarFundo('reserva');
             lucide.createIcons();
         }
 
@@ -3439,6 +3445,7 @@
         function closeReservationModal() {
             if (enviandoReserva) return;
             document.getElementById('reservation-modal').classList.add('hidden');
+            destravarFundo('reserva');
         }
 
         // Onde a borda de erro aparece: a .row do campo ou, no código, as quatro caixas.
@@ -3825,6 +3832,52 @@
         }
 
         /* ===================================================================
+           FUNDO TRAVADO E TECLADO
+           Com qualquer sheet aberta a página de trás não rola nem quica.
+           As sheets se empilham (login sobre a reserva, escolha sobre
+           qualquer uma): guardamos quais estão abertas e só destravamos
+           quando a última fecha. Vibes e Onboarding têm a trava deles.
+           =================================================================== */
+
+        const sheetsAbertas = new Set();
+        let fundoY = 0;
+
+        function travarFundo(id) {
+            if (sheetsAbertas.has(id)) return;
+            sheetsAbertas.add(id);
+            if (sheetsAbertas.size > 1) return;
+            fundoY = window.scrollY;
+            const b = document.body.style;
+            b.position = 'fixed';
+            b.top = `-${fundoY}px`;
+            b.width = '100%';
+            ajustarTeclado();
+        }
+
+        function destravarFundo(id) {
+            if (!sheetsAbertas.delete(id) || sheetsAbertas.size) return;
+            const b = document.body.style;
+            b.position = '';
+            b.top = '';
+            b.width = '';
+            window.scrollTo(0, fundoY);
+            ajustarTeclado();
+        }
+
+        // No iOS o teclado não encolhe a página: a sheet sobe o quanto ele ocupa.
+        function ajustarTeclado() {
+            const vv = window.visualViewport;
+            if (!vv) return;
+            const ocupado = sheetsAbertas.size ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+            document.documentElement.style.setProperty('--teclado', `${ocupado}px`);
+        }
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', ajustarTeclado);
+            window.visualViewport.addEventListener('scroll', ajustarTeclado);
+        }
+
+        /* ===================================================================
            CONFIRMAR E ESCOLHER
            Nada de confirm() nem <select> do sistema: os dois sobem neste
            painel, no visual do app. confirmar() resolve true/false;
@@ -3838,6 +3891,7 @@
             if (resolverEscolha) resolverEscolha(null);
             document.getElementById('escolha-corpo').innerHTML = html;
             document.getElementById('escolha-sheet').classList.remove('hidden');
+            travarFundo('escolha');
             lucide.createIcons();
             return new Promise(r => { resolverEscolha = r; });
         }
@@ -3846,6 +3900,7 @@
             const sheet = document.getElementById('escolha-sheet');
             if (sheet.classList.contains('hidden')) return false;
             sheet.classList.add('hidden');
+            destravarFundo('escolha');
             const r = resolverEscolha;
             resolverEscolha = null;
             if (r) r(valor);
@@ -3881,10 +3936,12 @@
         function openMenu() {
             renderMenu();
             document.getElementById('menu-sheet').classList.remove('hidden');
+            travarFundo('menu');
         }
 
         function closeMenu() {
             document.getElementById('menu-sheet').classList.add('hidden');
+            destravarFundo('menu');
         }
 
         function renderMenu() {
@@ -3990,6 +4047,7 @@
                 timer: null
             };
             document.getElementById('login-sheet').classList.remove('hidden');
+            travarFundo('login');
             renderLogin();
         }
 
@@ -3997,6 +4055,7 @@
             if (login) clearInterval(login.timer);
             login = null;
             document.getElementById('login-sheet').classList.add('hidden');
+            destravarFundo('login');
         }
 
         function voltarLogin() {
@@ -4025,7 +4084,7 @@
                             <div class="group-list on-fill">
                                 <label class="row">
                                     <span class="t-body c-2 shrink-0">+55</span>
-                                    <input id="login-tel" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="(62) 99999-9999"
+                                    <input id="login-tel" type="tel" inputmode="numeric" enterkeyhint="send" autocomplete="tel-national" placeholder="(62) 99999-9999"
                                         value="${escHtml(login.telefone)}" oninput="aoDigitarTelefone(this)"
                                         onkeydown="if (event.key === 'Enter') enviarCodigo('WhatsApp')" class="bare t-body flex-1" aria-label="Número de celular com DDD">
                                 </label>
@@ -4049,7 +4108,7 @@
                         <div class="space-y-3">
                             <div class="otp">
                                 ${[0, 1, 2, 3].map(() => '<div class="otp-caixa" aria-hidden="true"></div>').join('')}
-                                <input id="login-codigo" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4"
+                                <input id="login-codigo" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="one-time-code" maxlength="4"
                                     oninput="aoDigitarCodigo(this)" aria-label="Código de 4 números">
                             </div>
                             <p id="login-codigo-erro" role="alert" class="msg-erro text-center px-4 hidden"></p>
@@ -4071,7 +4130,7 @@
                         <div class="group-list on-fill">
                             <label class="row">
                                 <span class="t-body shrink-0">Nome</span>
-                                <input id="login-nome" type="text" autocomplete="name" placeholder="Nome e sobrenome"
+                                <input id="login-nome" type="text" autocomplete="name" enterkeyhint="done" placeholder="Nome e sobrenome"
                                     oninput="document.getElementById('login-continuar').disabled = this.value.trim().length < 2"
                                     onkeydown="if (event.key === 'Enter' && this.value.trim().length >= 2) concluirLogin(this.value)"
                                     class="bare t-body c-2 flex-1 text-right">
@@ -4793,7 +4852,7 @@
                 <div class="group-list">
                     <label class="row gap-2">
                         <i data-lucide="search" class="w-4 h-4 c-2 shrink-0"></i>
-                        <input type="search" oninput="filtrarListaGerente(this.value)" placeholder="Buscar nome ou WhatsApp" class="bare t-body flex-1">
+                        <input type="search" enterkeyhint="search" oninput="filtrarListaGerente(this.value)" placeholder="Buscar nome ou WhatsApp" class="bare t-body flex-1">
                     </label>
                 </div>
                 <div id="lista-gerente" class="group-list">${linhas}</div>
@@ -5265,10 +5324,12 @@
             vagaModalState = { vagaId, etapa: etapa || 'termos', aceite: false };
             renderVagaModal();
             document.getElementById('vaga-modal').classList.remove('hidden');
+            travarFundo('vaga');
         }
 
         function closeVagaModal() {
             document.getElementById('vaga-modal').classList.add('hidden');
+            destravarFundo('vaga');
             if (currentTab === 'freelas') renderFreelas();
         }
 
