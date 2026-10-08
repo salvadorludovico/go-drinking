@@ -35,29 +35,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        theme: {
-                            bg: 'var(--bg-app)',
-                            card: 'var(--bg-card)',
-                            border: 'var(--border-color)',
-                            primary: 'var(--primary)',
-                            secondary: 'var(--secondary)',
-                            accent: 'var(--accent)',
-                        }
-                    },
-                    fontFamily: {
-                        heading: 'var(--font-heading)',
-                        body: 'var(--font-body)',
-                    }
-                }
-            }
-        }
-    </script>
-
     <style>
         /* ===================================================================
            SISTEMA VISUAL
@@ -66,24 +43,19 @@
            e na imagem — nunca troca fonte nem cor do app inteiro.
            =================================================================== */
         :root {
-            --bg-app: #000000;
-            --bg-card: #1c1c1e;
-            --border-color: #2c2c2e;
             --primary: #ffffff;
-            --secondary: #98989f;
             --accent: #ff9f0a;
             --live: #30d158;
             --danger: #ff453a;
+            --info: #64d2ff;
             --fill-1: #1c1c1e;
             --fill-2: #2c2c2e;
             --fill-3: #3a3a3c;
+            --label-1b: #ebebf5; /* branco apagado: texto secundário sobre imagem ou caixa escura */
             --label-2: #98989f;
             --label-3: #8e8e93;
             --sep: rgba(255, 255, 255, 0.12);
-            --font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Geist", system-ui, sans-serif;
             --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Geist", system-ui, sans-serif;
-            --border-radius: 14px;
-            --button-radius: 12px;
         }
 
         body {
@@ -107,6 +79,8 @@
         .t-cap { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
         .c-2 { color: var(--label-2); }
         .c-3 { color: var(--label-3); }
+        .c-1b { color: var(--label-1b); }
+        .chevron { color: var(--label-3); }
         .c-accent { color: var(--accent); }
         .c-live { color: var(--live); }
         .c-danger { color: var(--danger); }
@@ -116,21 +90,30 @@
         .press { transition: transform 0.18s ease, opacity 0.18s ease; cursor: pointer; }
         .press:active { transform: scale(0.97); opacity: 0.85; }
 
+        /* Cartão: superfície padrão sobre o fundo preto */
+        .card { background: var(--fill-1); border-radius: 18px; }
+
         /* Listas agrupadas com separador recuado */
         .group-list { background: var(--fill-1); border-radius: 16px; overflow: hidden; }
         .group-list.on-fill { background: var(--fill-2); border-radius: 14px; }
         .row { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-height: 48px; width: 100%; text-align: left; }
         .row:not(.hidden) ~ .row::before { content: ''; position: absolute; top: 0; right: 0; left: var(--inset, 16px); height: 0.5px; background: var(--sep); }
 
-        .btn-primary { height: 50px; padding: 0 24px; border-radius: 25px; background: #ffffff; color: #000000; font-size: 17px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
-        .btn-primary.sm { height: 44px; padding: 0 20px; border-radius: 22px; font-size: 15px; }
+        .btn-primary { height: 50px; padding: 0 24px; border-radius: 9999px; background: #ffffff; color: #000000; font-size: 17px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+        .btn-primary.sm { height: 44px; padding: 0 20px; font-size: 15px; }
+        .btn-primary.lg { height: 54px; } /* ação final de uma folha */
         .btn-primary.alt { background: var(--fill-2); color: #ffffff; }
         .btn-primary:disabled { background: var(--fill-2); color: var(--label-3); }
         .btn-secondary { height: 36px; padding: 0 14px; border-radius: 18px; background: var(--fill-2); color: #ffffff; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-secondary.claro { background: #ffffff; color: #000000; } /* ação principal dentro de uma linha */
 
         /* Materiais translúcidos */
         .glass { background: rgba(28, 28, 30, 0.7); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
         .chip-glass { height: 28px; padding: 0 10px; border-radius: 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        /* Chips semânticos: cor do papel com fundo em 16% */
+        .chip-live { background: color-mix(in srgb, var(--live) 16%, transparent); color: var(--live); }
+        .chip-accent { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+        .chip-info { background: color-mix(in srgb, var(--info) 16%, transparent); color: var(--info); }
         .icon-glass { width: 40px; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #ffffff; }
         .bar-bottom { background: rgba(22, 22, 24, 0.84); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-top: 0.5px solid rgba(255, 255, 255, 0.14); }
         .bar-top { background: rgba(22, 22, 24, 0.84); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); border-bottom: 0.5px solid rgba(255, 255, 255, 0.14); }
@@ -251,7 +234,7 @@
         /* Garante legibilidade total dos campos de texto (corrigindo textos invisíveis/brancos) */
         input, textarea {
             color: #ffffff !important;
-            background-color: var(--bg-card) !important;
+            background-color: var(--fill-1) !important;
         }
         input:focus, textarea:focus {
             border-color: var(--primary) !important;
@@ -304,7 +287,7 @@
 <body class="min-h-screen bg-black">
 
     <!-- Container Principal Centrado: Fica perfeito no Desktop e 100% fluido no Celular -->
-    <div class="max-w-md mx-auto bg-theme-bg min-h-screen flex flex-col border-x border-[#1c1c1e] relative pb-28">
+    <div class="max-w-md mx-auto bg-black min-h-screen flex flex-col border-x border-[#1c1c1e] relative pb-28">
 
         <!-- Barra compacta: aparece quando o título grande sai da tela (padrão iOS) -->
         <div id="barra-compacta" aria-hidden="true" class="bar-top fixed top-0 inset-x-0 max-w-md mx-auto z-30 pointer-events-none opacity-0 transition-opacity duration-200" style="padding-top: env(safe-area-inset-top);">
@@ -348,7 +331,7 @@
                             <span class="t-callout font-semibold">Trabalhe na noite</span>
                             <span class="t-foot c-2">Vagas de freela nas casas, com contrato no app</span>
                         </span>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-[#636366] shrink-0"></i>
+                        <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0"></i>
                     </button>
                 </div>
             </section>
@@ -368,7 +351,7 @@
                     <!-- Gerado via renderAgenda() -->
                 </div>
                 <div id="agenda-mapa" class="hidden px-4 pt-4">
-                    <div class="mapa-moldura relative rounded-[18px] overflow-hidden bg-[#1c1c1e]" style="height: max(380px, calc(100dvh - 330px));">
+                    <div class="mapa-moldura relative card overflow-hidden" style="height: max(380px, calc(100dvh - 330px));">
                         <div id="mapa-agenda" class="absolute inset-0"></div>
                         <button type="button" onclick="centralizarMapaAgenda()" aria-label="Mostrar todas as casas e a minha localização"
                                 class="press glass absolute top-3 right-3 z-[1000] w-10 h-10 rounded-full flex items-center justify-center">
@@ -486,7 +469,7 @@
         <!-- ENTRAR NA LISTA / RESERVAR (painel que sobe do rodapé) -->
         <div id="reservation-modal" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true" aria-labelledby="modal-event-title">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeReservationModal()"></div>
-            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[#1c1c1e] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
+            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
                 <div class="grabber"></div>
                 <div class="flex items-center gap-3 pt-4 pb-2">
                     <img id="modal-house-logo" alt="" class="w-11 h-11 rounded-full object-cover bg-[#2c2c2e] shrink-0">
@@ -520,7 +503,7 @@
                                 <span class="t-body">Pessoas</span>
                                 <div class="flex items-center gap-3.5">
                                     <button type="button" id="res-menos" onclick="alterarPessoas(-1)" aria-label="Menos uma pessoa" class="press stepper"><i data-lucide="minus" class="w-4 h-4"></i></button>
-                                    <span id="res-guests-label" aria-live="polite" class="w-6 text-center text-[20px] font-semibold">2</span>
+                                    <span id="res-guests-label" aria-live="polite" class="w-6 text-center t-title3">2</span>
                                     <button type="button" id="res-mais" onclick="alterarPessoas(1)" aria-label="Mais uma pessoa" class="press stepper"><i data-lucide="plus" class="w-4 h-4"></i></button>
                                 </div>
                             </div>
@@ -532,7 +515,7 @@
                     </div>
 
                     <div class="space-y-2.5 pt-2">
-                        <button type="submit" id="res-submit" class="press btn-primary w-full" style="height: 54px; border-radius: 27px;">Confirmar</button>
+                        <button type="submit" id="res-submit" class="press btn-primary lg w-full">Confirmar</button>
                         <p id="res-login-nota" class="t-foot c-2 text-center px-4 flex items-center justify-center gap-1.5 hidden">
                             <i data-lucide="smartphone" class="w-3.5 h-3.5 shrink-0"></i><span>No próximo passo você entra com seu celular, sem senha.</span>
                         </p>
@@ -545,7 +528,7 @@
         <!-- MODAL DA VAGA: TERMOS → CONTRATO → ASSINADO -->
         <div id="vaga-modal" class="fixed inset-0 z-[60] flex items-end justify-center hidden" role="dialog" aria-modal="true">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeVagaModal()"></div>
-            <div class="sheet bg-[#1c1c1e] w-full max-w-md rounded-t-[28px] px-5 pt-2 relative max-h-[90vh] overflow-y-auto no-scrollbar pb-safe">
+            <div class="sheet bg-[var(--fill-1)] w-full max-w-md rounded-t-[28px] px-5 pt-2 relative max-h-[90vh] overflow-y-auto no-scrollbar pb-safe">
                 <div class="grabber mb-5"></div>
                 <button onclick="closeVagaModal()" aria-label="Fechar" class="press absolute top-5 right-5 w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center">
                     <i data-lucide="x" class="w-4 h-4 text-neutral-400"></i>
@@ -559,13 +542,13 @@
         <!-- MENU DO AVATAR: conta e ferramentas de demonstração -->
         <div id="menu-sheet" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true" aria-label="Perfil e demonstração">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeMenu()"></div>
-            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[#1c1c1e] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
+            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
                 <div class="grabber"></div>
                 <div class="flex justify-end pt-2">
                     <button onclick="closeMenu()" class="press t-headline c-accent h-11 px-1">OK</button>
                 </div>
                 <div class="flex flex-col items-center gap-1.5 pb-6">
-                    <div id="menu-avatar" class="w-[72px] h-[72px] rounded-full bg-[#3a3a3c] flex items-center justify-center text-[30px] font-semibold overflow-hidden"></div>
+                    <div id="menu-avatar" class="w-[72px] h-[72px] rounded-full bg-[#3a3a3c] flex items-center justify-center t-title1 overflow-hidden"></div>
                     <span id="menu-nome" class="t-title2 pt-1"></span>
                     <span id="menu-sub" class="t-sub c-2"></span>
                 </div>
@@ -621,15 +604,15 @@
         <div id="escolha-sheet" class="fixed inset-0 z-[65] hidden" role="dialog" aria-modal="true" aria-labelledby="escolha-titulo">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="fecharEscolha(null)"></div>
             <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto px-2 pb-safe space-y-2">
-                <div id="escolha-corpo" class="bg-[#1c1c1e] rounded-[14px] overflow-hidden max-h-[70vh] overflow-y-auto no-scrollbar"></div>
-                <button type="button" onclick="fecharEscolha(null)" class="press w-full h-14 rounded-[14px] bg-[#1c1c1e] t-headline c-accent">Cancelar</button>
+                <div id="escolha-corpo" class="bg-[var(--fill-1)] rounded-[14px] overflow-hidden max-h-[70vh] overflow-y-auto no-scrollbar"></div>
+                <button type="button" onclick="fecharEscolha(null)" class="press w-full h-14 rounded-[14px] bg-[var(--fill-1)] t-headline c-accent">Cancelar</button>
             </div>
         </div>
 
         <!-- ENTRAR COM CELULAR: sobe por cima da reserva e devolve a pessoa para ela -->
         <div id="login-sheet" class="fixed inset-0 z-[65] hidden" role="dialog" aria-modal="true" aria-labelledby="login-titulo">
             <div class="backdrop absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="fecharLogin()"></div>
-            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[#1c1c1e] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
+            <div class="sheet absolute bottom-0 inset-x-0 max-w-md mx-auto bg-[var(--fill-1)] rounded-t-[28px] max-h-[92vh] overflow-y-auto no-scrollbar px-4 pt-2 pb-safe">
                 <div class="grabber"></div>
                 <div class="flex items-center justify-between pt-2 h-11">
                     <button id="login-voltar" onclick="voltarLogin()" aria-label="Voltar" class="press w-[30px] h-[30px] rounded-full bg-[#2c2c2e] flex items-center justify-center c-2 invisible">
@@ -1837,7 +1820,7 @@
 
             return `
                 <div class="px-4">
-                    <article class="relative h-[400px] rounded-[24px] overflow-hidden bg-[#1c1c1e]">
+                    <article class="relative h-[400px] card rounded-[24px] overflow-hidden">
                         ${midiaHtml(house, 'absolute inset-0')}
                         <div class="absolute inset-0 scrim-hero"></div>
                         <button onclick="openHouseDetail('${house.id}', '${st.prog.id}')" aria-label="Ver ${escHtml(nomeNoite(st.prog))} em ${escHtml(nomeCasa(house))}" class="press absolute inset-0 w-full"></button>
@@ -1849,14 +1832,14 @@
                             <div class="flex flex-col gap-1.5">
                                 <div class="flex items-center gap-2 min-w-0">
                                     ${logoHtml(house, 'w-6 h-6')}
-                                    <span class="t-foot font-semibold text-[#ebebf5] truncate">${nomeCasa(house)} · ${generos}</span>
+                                    <span class="t-foot font-semibold c-1b truncate">${nomeCasa(house)} · ${generos}</span>
                                 </div>
                                 <h2 class="t-title1">${nomeNoite(st.prog)}</h2>
                             </div>
                             <div class="flex justify-between items-center gap-3">
                                 <div class="min-w-0 flex flex-col gap-0.5">
                                     <span class="t-headline ${ent.urgente ? 'c-accent' : ''}">${ent.principal}</span>
-                                    ${ent.detalheCurto ? `<span class="t-foot text-[#aeaeb2]">${ent.detalheCurto}</span>` : ''}
+                                    ${ent.detalheCurto ? `<span class="t-foot c-1b">${ent.detalheCurto}</span>` : ''}
                                 </div>
                                 <button onclick="openReservationModal('${st.prog.id}', '${house.id}', '${tipo}')" class="press btn-primary sm pointer-events-auto relative">${GARANTIAS[tipo].acao}</button>
                             </div>
@@ -1891,9 +1874,9 @@
                         <span class="flex-1 min-w-0 flex flex-col gap-0.5">
                             <span class="t-callout font-semibold truncate">${nomeNoite(st.prog)}</span>
                             <span class="t-foot c-2 truncate">${nomeCasa(house)} · ${house.setor}</span>
-                            <span class="t-foot text-[#ebebf5] truncate">${quando} · ${ent.curto}</span>
+                            <span class="t-foot c-1b truncate">${quando} · ${ent.curto}</span>
                         </span>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-[#636366] shrink-0"></i>
+                        <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0"></i>
                     </button>`;
             }).join('')}</div>`;
         }
@@ -1990,9 +1973,9 @@
                         <span class="flex-1 min-w-0 flex flex-col gap-0.5">
                             <span class="t-callout font-semibold truncate">${nomeCasa(house)}</span>
                             <span class="t-foot c-2 truncate">${house.especialidade} · ${house.setor}</span>
-                            <span class="t-foot ${st && st.estado === 'agora' ? 'c-live' : 'text-[#ebebf5]'} truncate">${detalhe}</span>
+                            <span class="t-foot ${st && st.estado === 'agora' ? 'c-live' : 'c-1b'} truncate">${detalhe}</span>
                         </span>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-[#636366] shrink-0"></i>
+                        <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0"></i>
                     </button>`;
             }).join('');
 
@@ -2144,7 +2127,7 @@
 
             return `
                 <a href="?casa=${house.id}" onclick="openHouseDetail('${house.id}', '${prog.id}'); return false;"
-                   class="press block rounded-[18px] bg-[#1c1c1e] overflow-hidden ${estado === 'encerrada' ? 'opacity-50' : ''}">
+                   class="press block card overflow-hidden ${estado === 'encerrada' ? 'opacity-50' : ''}">
                     <div class="flex gap-3.5 p-3.5">
                         ${midiaHtml(house, 'w-[72px] h-[72px] rounded-xl shrink-0', 'thumb')}
                         <div class="flex-1 min-w-0 flex flex-col">
@@ -2209,7 +2192,7 @@
                 const ativo = sel === agendaDia;
                 return `
                     <button onclick="selecionarDiaAgenda('${sel}')" aria-pressed="${ativo}"
-                            class="press shrink-0 rounded-2xl px-3.5 py-2 min-w-[76px] flex flex-col items-start ${ativo ? 'bg-white text-black' : 'bg-[#1c1c1e] text-white'}">
+                            class="press shrink-0 rounded-2xl px-3.5 py-2 min-w-[76px] flex flex-col items-start ${ativo ? 'bg-white text-black' : 'bg-[var(--fill-1)] text-white'}">
                         <span class="t-sub font-semibold whitespace-nowrap">${rotuloChipAgenda(sel, ref)}</span>
                         <span class="t-foot ${ativo ? 'text-black/60' : 'c-2'}">${casas ? `${casas} ${casas === 1 ? 'casa' : 'casas'}` : 'nada'}</span>
                     </button>`;
@@ -2946,7 +2929,7 @@
                             ${noite ? `<span class="t-foot c-2 truncate">${noite}</span>` : ''}
                             ${entrada ? `<span class="t-sub font-semibold">${entrada}</span>` : ''}
                         </span>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-[#636366] shrink-0 self-center"></i>
+                        <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0 self-center"></i>
                     </button>
                     <p class="t-foot c-2 flex items-center gap-1.5">
                         <i data-lucide="map-pin" class="w-3.5 h-3.5 shrink-0"></i>
@@ -2980,7 +2963,7 @@
             return `
                 <section class="space-y-2.5">
                     <h2 class="t-title3">Como chegar</h2>
-                    <div class="mapa-moldura rounded-[18px] bg-[#1c1c1e] overflow-hidden">
+                    <div class="mapa-moldura card overflow-hidden">
                         <div id="mapa-casa" class="h-[160px]"></div>
                         <div class="px-4 py-3.5 space-y-3">
                             <div class="space-y-0.5">
@@ -3149,14 +3132,14 @@
                 noiteHtml = `
                     <section class="space-y-2.5">
                         <p class="t-cap c-2">${rotuloDataNoite(st.inicio, ref)}</p>
-                        <div class="rounded-[18px] bg-[#1c1c1e] px-4 py-[18px] space-y-4">
+                        <div class="card px-4 py-[18px] space-y-4">
                             <div class="space-y-1">
                                 <h2 class="t-title2">${nomeNoite(prog)}</h2>
                                 <p class="t-sub c-2">${fmtHora(st.inicio)} – ${fmtHora(st.fim)}</p>
                                 ${comeca}
                             </div>
                             <div class="group-list on-fill">${faixasEntradaHtml(prog, st.occ, ref)}</div>
-                            ${prog.descricao ? `<p class="t-sub text-[#ebebf5]">${prog.descricao}</p>` : ''}
+                            ${prog.descricao ? `<p class="t-sub c-1b">${prog.descricao}</p>` : ''}
                             ${prog.djs ? `
                             <div class="space-y-1">
                                 <p class="t-foot c-2">Line-up</p>
@@ -3195,14 +3178,14 @@
                         ${outras.map(s => `
                             <button onclick="openHouseDetail('${house.id}', '${s.prog.id}')" class="press row" style="--inset: 74px;">
                                 <span class="w-11 flex flex-col items-center shrink-0">
-                                    <span class="text-[11px] font-semibold c-accent">${s.estado === 'agora' ? 'AGORA' : DIAS_ABREV[s.inicio.getDay()].toUpperCase()}</span>
-                                    <span class="text-[22px] font-bold leading-7">${s.inicio.getDate()}</span>
+                                    <span class="t-cap c-accent">${s.estado === 'agora' ? 'AGORA' : DIAS_ABREV[s.inicio.getDay()].toUpperCase()}</span>
+                                    <span class="t-title2">${s.inicio.getDate()}</span>
                                 </span>
                                 <span class="flex-1 min-w-0 flex flex-col gap-0.5">
                                     <span class="t-callout font-semibold truncate">${nomeNoite(s.prog)}</span>
                                     <span class="t-foot c-2 truncate">${fmtHora(s.inicio)} · ${infoEntrada(s.prog, s.occ, ref).curto}</span>
                                 </span>
-                                <i data-lucide="chevron-right" class="w-4 h-4 text-[#636366] shrink-0"></i>
+                                <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0"></i>
                             </button>`).join('')}
                     </div>
                 </section>` : '';
@@ -3226,7 +3209,7 @@
                     <div class="absolute left-4 right-4 bottom-5 flex flex-col gap-2.5">
                         ${logoHtml(house, 'w-[52px] h-[52px] border-2 border-white/20')}
                         <h1 class="t-large">${nomeCasa(house)}</h1>
-                        <p class="t-sub text-[#aeaeb2]">${house.especialidade} · ${house.setor}</p>
+                        <p class="t-sub c-1b">${house.especialidade} · ${house.setor}</p>
                     </div>
                 </div>
                 <div class="px-4 pt-2 pb-16 space-y-7">
@@ -3239,7 +3222,7 @@
                     <a href="https://instagram.com/${house.instagram.replace('@', '')}" target="_blank" rel="noopener" class="press group-list row">
                         <i data-lucide="at-sign" class="w-5 h-5 c-2"></i>
                         <span class="flex-1 t-callout">${house.instagram.replace('@', '')}</span>
-                        <i data-lucide="arrow-up-right" class="w-4 h-4 text-[#636366]"></i>
+                        <i data-lucide="arrow-up-right" class="w-4 h-4 chevron"></i>
                     </a>` : ''}
                 </div>
             `;
@@ -3535,7 +3518,7 @@
         function vazioHtml({ icone, titulo, texto, acaoHtml = '' }) {
             return `
                     <div class="pt-10 pb-4 flex flex-col items-center text-center gap-2">
-                        <span class="w-14 h-14 rounded-full bg-[#1c1c1e] flex items-center justify-center mb-2"><i data-lucide="${icone}" class="w-6 h-6 c-2"></i></span>
+                        <span class="w-14 h-14 rounded-full bg-[var(--fill-1)] flex items-center justify-center mb-2"><i data-lucide="${icone}" class="w-6 h-6 c-2"></i></span>
                         <p class="t-headline">${titulo}</p>
                         <p class="t-sub c-2 max-w-[280px]">${texto}</p>
                         ${acaoHtml}
@@ -3627,9 +3610,9 @@
 
             let chip;
             if (cancelada) chip = `<span class="chip-glass bg-white/10 c-2">Cancelado</span>`;
-            else if (r.status === 'presente') chip = `<span class="chip-glass" style="background: rgba(100,210,255,0.18); color: #64d2ff;"><i data-lucide="scan-line" class="w-3 h-3"></i>Entrada validada</span>`;
+            else if (r.status === 'presente') chip = `<span class="chip-glass chip-info"><i data-lucide="scan-line" class="w-3 h-3"></i>Entrada validada</span>`;
             else if (passou) chip = `<span class="chip-glass bg-white/10 c-2">Encerrado</span>`;
-            else chip = `<span class="chip-glass" style="background: rgba(48,209,88,0.2); color: var(--live);"><i data-lucide="check" class="w-3 h-3"></i>Confirmado</span>`;
+            else chip = `<span class="chip-glass chip-live"><i data-lucide="check" class="w-3 h-3"></i>Confirmado</span>`;
 
             const quando = occ ? `${diaRelativo(occ.inicio, ref)}, ${pad2(occ.inicio.getDate())}/${pad2(occ.inicio.getMonth() + 1)}` : r.eventDay;
             const entrada = prog && occ ? infoEntrada(prog, occ, occ.inicio).curto : '—';
@@ -3649,7 +3632,7 @@
             const casa = house ? nomeCasa(house) : titulo(r.houseName);
 
             return `
-                <article class="rounded-[22px] bg-[#1c1c1e] overflow-hidden ${passou ? 'opacity-60' : ''}">
+                <article class="card rounded-[22px] overflow-hidden ${passou ? 'opacity-60' : ''}">
                     <div class="relative h-24">
                         ${house ? midiaHtml(house, 'absolute inset-0') : ''}
                         <div class="absolute inset-0 bg-black/55"></div>
@@ -3664,9 +3647,9 @@
                     <div class="px-4 pt-4 space-y-3.5">
                         <h3 class="t-title2">${nomeEvento}</h3>
                         <div class="grid grid-cols-3 gap-2">
-                            <div class="min-w-0"><p class="text-[11px] font-semibold c-2 tracking-wide">DATA</p><p class="t-sub font-semibold truncate">${quando}</p></div>
-                            <div class="min-w-0"><p class="text-[11px] font-semibold c-2 tracking-wide">${mesa ? 'MESA' : 'LISTA'}</p><p class="t-sub font-semibold truncate">${mesa ? rotuloPessoas(r.guestsCount) : 'Individual'}</p></div>
-                            <div class="min-w-0"><p class="text-[11px] font-semibold c-2 tracking-wide">ENTRADA</p><p class="t-sub font-semibold truncate">${entrada}</p></div>
+                            <div class="min-w-0"><p class="t-cap c-2">DATA</p><p class="t-sub font-semibold truncate">${quando}</p></div>
+                            <div class="min-w-0"><p class="t-cap c-2">${mesa ? 'MESA' : 'LISTA'}</p><p class="t-sub font-semibold truncate">${mesa ? rotuloPessoas(r.guestsCount) : 'Individual'}</p></div>
+                            <div class="min-w-0"><p class="t-cap c-2">ENTRADA</p><p class="t-sub font-semibold truncate">${entrada}</p></div>
                         </div>
                         <p class="t-foot c-2">Em nome de ${escHtml(r.userName)}</p>
                     </div>
@@ -3735,7 +3718,7 @@
                             <span class="t-callout font-semibold truncate">${nomeNoite(sugestao.st.prog)}</span>
                             <span class="t-foot c-2 truncate">${nomeCasa(sugestao.house)} · ${infoEntrada(sugestao.st.prog, sugestao.st.occ, ref).principal}</span>
                         </span>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-[#636366] shrink-0"></i>
+                        <i data-lucide="chevron-right" class="w-4 h-4 chevron shrink-0"></i>
                     </button>` : ''}`;
             } else {
                 lista.innerHTML = `<p class="t-sub c-2 text-center pt-12">Nenhuma noite passada ainda.</p>`;
@@ -3833,7 +3816,7 @@
             const linha = (acao, texto, extra) => `
                 <button onclick="${acao}" class="press row justify-between">
                     <span class="t-body ${extra || ''}">${texto}</span>
-                    ${extra ? '' : '<i data-lucide="chevron-right" class="w-4 h-4 text-[#636366]"></i>'}
+                    ${extra ? '' : '<i data-lucide="chevron-right" class="w-4 h-4 chevron"></i>'}
                 </button>`;
             document.getElementById('menu-conta').innerHTML = logado
                 ? linha("closeMenu(); switchTab('ingressos');", 'Meus ingressos') +
@@ -4153,14 +4136,14 @@
                     ? '<span class="glass chip-glass"><span class="dot pulse"></span>Rolando agora</span>'
                     : `<span class="glass chip-glass">${diaRelativo(st.inicio, ref)}, ${fmtHora(st.inicio)}</span>`;
                 visualNoite = `
-                    <article class="relative w-full h-full max-h-[340px] rounded-[24px] overflow-hidden bg-[#1c1c1e]">
+                    <article class="relative w-full h-full max-h-[340px] card rounded-[24px] overflow-hidden">
                         ${midiaHtml(house, 'absolute inset-0')}
                         <div class="absolute inset-0 scrim-hero"></div>
                         <div class="absolute top-4 left-4">${chip}</div>
                         <div class="absolute left-5 right-5 bottom-5 flex flex-col gap-1.5">
                             <div class="flex items-center gap-2 min-w-0">
                                 ${logoHtml(house, 'w-6 h-6')}
-                                <span class="t-foot font-semibold text-[#ebebf5] truncate">${nomeCasa(house)}</span>
+                                <span class="t-foot font-semibold c-1b truncate">${nomeCasa(house)}</span>
                             </div>
                             <h3 class="t-title2">${nomeNoite(st.prog)}</h3>
                             <span class="t-headline ${ent.urgente ? 'c-accent' : ''}">${ent.principal}</span>
@@ -4193,11 +4176,11 @@
             const casaPasse = destaque ? destaque.house : housesData[0];
             const noitePasse = destaque ? destaque.st : null;
             const visualPasse = `
-                <article class="w-full max-w-[290px] rounded-[22px] bg-[#1c1c1e] overflow-hidden">
+                <article class="w-full max-w-[290px] card rounded-[22px] overflow-hidden">
                     <div class="px-4 pt-4 flex items-center gap-2.5">
                         ${logoHtml(casaPasse, 'w-8 h-8')}
                         <span class="t-headline truncate flex-1">${nomeCasa(casaPasse)}</span>
-                        <span class="chip-glass" style="background: rgba(48,209,88,0.2); color: var(--live);"><i data-lucide="check" class="w-3 h-3"></i>Na lista</span>
+                        <span class="chip-glass chip-live"><i data-lucide="check" class="w-3 h-3"></i>Na lista</span>
                     </div>
                     ${noitePasse ? `<p class="px-4 pt-2 t-sub c-2 truncate">${nomeNoite(noitePasse.prog)} · ${infoEntrada(noitePasse.prog, noitePasse.occ, ref).curto}</p>` : ''}
                     <div class="mt-4 border-t-[1.5px] border-dashed border-[#3a3a3c]"></div>
@@ -4621,7 +4604,7 @@
                 </div>` : '';
 
             const numero = (rotulo, valor) => `
-                <div class="rounded-[18px] bg-[#1c1c1e] p-4 space-y-1">
+                <div class="card p-4 space-y-1">
                     <p class="t-foot c-2">${rotulo}</p>
                     <p class="t-large">${valor}</p>
                 </div>`;
@@ -4650,7 +4633,7 @@
             const linhas = ordenada.map(r => {
                 const acao = r.status === 'presente'
                     ? `<span class="t-foot c-live flex items-center gap-1 shrink-0"><i data-lucide="check" class="w-3.5 h-3.5"></i>Entrou</span>`
-                    : `<button onclick="confirmPresence('${r.id}')" class="press btn-primary sm shrink-0" style="height: 36px; padding: 0 14px;">Validar entrada</button>`;
+                    : `<button onclick="confirmPresence('${r.id}')" class="press btn-secondary claro shrink-0">Validar entrada</button>`;
                 const quando = r.eventDate ? diaRelativo(new Date(r.eventDate)) : '';
                 return `
                     <div class="row" style="min-height: 64px;" data-busca="${escHtml((r.userName + ' ' + (r.userPhone || '')).toLocaleLowerCase('pt-BR'))}">
@@ -4717,7 +4700,7 @@
                 </section>`;
 
             return `
-                <div class="relative aspect-square rounded-[22px] overflow-hidden bg-[#1c1c1e]">
+                <div class="relative aspect-square card rounded-[22px] overflow-hidden">
                     <video id="qr-video" playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
                     <div class="absolute inset-[18%] rounded-[18px] border-2 border-white/80 pointer-events-none"></div>
                     <p id="qr-status" class="absolute inset-x-0 bottom-0 p-3 text-center t-foot c-2 bg-black/50">Abrindo a câmera…</p>
@@ -4816,11 +4799,11 @@
                 }
             }
 
-            const cor = { ok: 'var(--live)', aviso: '#ff9f0a', erro: '#ff453a' }[tipo];
+            const cor = { ok: 'var(--live)', aviso: 'var(--accent)', erro: 'var(--danger)' }[tipo];
             const icone = { ok: 'circle-check', aviso: 'circle-alert', erro: 'circle-x' }[tipo];
             document.getElementById('qr-status').innerText = 'Leitura pausada';
             document.getElementById('qr-resultado').innerHTML = `
-                <div class="rounded-[18px] bg-[#1c1c1e] p-4 space-y-3" style="box-shadow: inset 0 0 0 1.5px ${cor};">
+                <div class="card p-4 space-y-3" style="box-shadow: inset 0 0 0 1.5px ${cor};">
                     <div class="flex items-start gap-3">
                         <i data-lucide="${icone}" class="w-7 h-7 shrink-0" style="color: ${cor};"></i>
                         <div class="min-w-0">
@@ -4968,7 +4951,7 @@
 
             const chips = funcoes.map(f => {
                 const ativo = f === freelaFiltro;
-                return `<button onclick="filtrarFreelas('${f}')" aria-pressed="${ativo}" class="press shrink-0 h-9 px-4 rounded-full t-sub font-semibold ${ativo ? 'bg-white text-black' : 'bg-[#1c1c1e] text-white'}">${f === 'todas' ? 'Todas' : f}</button>`;
+                return `<button onclick="filtrarFreelas('${f}')" aria-pressed="${ativo}" class="press shrink-0 h-9 px-4 rounded-full t-sub font-semibold ${ativo ? 'bg-white text-black' : 'bg-[var(--fill-1)] text-white'}">${f === 'todas' ? 'Todas' : f}</button>`;
             }).join('');
 
             const vagasHtml = vagasData
@@ -4982,7 +4965,7 @@
                         ? `<span class="t-sub font-semibold c-live flex items-center gap-1.5 shrink-0"><i data-lucide="check" class="w-4 h-4"></i>Escalado</span>`
                         : `<button onclick="openVagaModal('${v.id}')" class="press btn-primary sm shrink-0">Ver termos</button>`;
                     return `
-                        <article class="rounded-[18px] bg-[#1c1c1e] p-4 space-y-4 ${esc ? 'opacity-60' : ''}">
+                        <article class="card p-4 space-y-4 ${esc ? 'opacity-60' : ''}">
                             <div class="flex items-center gap-3">
                                 ${logoHtml(ctx.house, 'w-10 h-10')}
                                 <div class="flex-1 min-w-0">
@@ -5019,7 +5002,7 @@
                         <span class="t-headline">${freelaDemo.nome}</span>
                         <span class="t-foot c-2">${freelaDemo.modalidade} · ${freelaDemo.cnpj}</span>
                     </span>
-                    <span class="chip-glass shrink-0" style="background: rgba(48,209,88,0.18); color: var(--live);"><i data-lucide="badge-check" class="w-3.5 h-3.5"></i>CNPJ validado</span>
+                    <span class="chip-glass chip-live shrink-0"><i data-lucide="badge-check" class="w-3.5 h-3.5"></i>CNPJ validado</span>
                 </div>
 
                 ${htmlMinhasEscalas()}
@@ -5066,7 +5049,7 @@
                     }
 
                     return `
-                        <article class="rounded-[18px] bg-[#1c1c1e] p-4 space-y-4">
+                        <article class="card p-4 space-y-4">
                             <div class="flex items-center gap-3">
                                 ${logoHtml(ctx.house, 'w-10 h-10')}
                                 <div class="flex-1 min-w-0">
@@ -5133,7 +5116,7 @@
                 </div>`;
 
             const caixaContrato = (titulo_) => `
-                <div class="rounded-[14px] bg-[#2c2c2e] p-4 max-h-56 overflow-y-auto no-scrollbar space-y-2.5 t-foot text-[#ebebf5]">
+                <div class="rounded-[14px] bg-[#2c2c2e] p-4 max-h-56 overflow-y-auto no-scrollbar space-y-2.5 t-foot c-1b">
                     ${titulo_ ? `<p class="t-cap c-2">${titulo_}</p>` : ''}
                     ${textoContrato(vaga, house, ctx.inicio, ctx.fim)}
                 </div>`;
@@ -5169,7 +5152,7 @@
                             <p><span class="text-white font-semibold">Tributos:</span> contratação como MEI, sem retenção na fonte. Você emite a nota fiscal depois do turno.</p>
                             <p><span class="text-white font-semibold">Cancelamento:</span> sem custo até 24h antes do início.</p>
                         </div>
-                        <button onclick="candidatarVaga()" class="press btn-primary w-full" style="height: 54px; border-radius: 27px;">Quero essa vaga</button>
+                        <button onclick="candidatarVaga()" class="press btn-primary lg w-full">Quero essa vaga</button>
                     </div>`;
             } else if (etapa === 'aprovando') {
                 el.innerHTML = `
@@ -5192,7 +5175,7 @@
                             <input type="checkbox" ${aceite ? 'checked' : ''} onchange="vagaModalState.aceite = this.checked; renderVagaModal();" class="w-5 h-5 shrink-0 accent-[#30d158]">
                             <span class="t-sub">Li o contrato e concordo com os termos.</span>
                         </label>
-                        <button onclick="assinarContrato()" ${aceite ? '' : 'disabled'} class="press btn-primary w-full" style="height: 54px; border-radius: 27px;">Assinar contrato</button>
+                        <button onclick="assinarContrato()" ${aceite ? '' : 'disabled'} class="press btn-primary lg w-full">Assinar contrato</button>
                         <p class="t-foot c-3 text-center">Assinatura eletrônica com validade jurídica (Lei 14.063/2020).</p>
                     </div>`;
             } else if (etapa === 'assinado') {
@@ -5200,12 +5183,12 @@
                     <div class="space-y-5">
                         ${cabecalho}
                         <div class="flex flex-col items-center text-center gap-2 py-2">
-                            <span class="w-14 h-14 rounded-full flex items-center justify-center c-live" style="background: rgba(48,209,88,0.18);"><i data-lucide="file-check" class="w-6 h-6"></i></span>
+                            <span class="w-14 h-14 rounded-full flex items-center justify-center chip-live"><i data-lucide="file-check" class="w-6 h-6"></i></span>
                             <p class="t-title3 pt-1">Contrato assinado</p>
                             <p class="mono t-foot c-3">${fmtDataHora(new Date(esc.assinadoEm))} · código ${esc.codigo}</p>
                         </div>
                         ${caixaContrato('')}
-                        <button onclick="closeVagaModal()" class="press btn-primary w-full" style="height: 54px; border-radius: 27px;">Ver minhas escalas</button>
+                        <button onclick="closeVagaModal()" class="press btn-primary lg w-full">Ver minhas escalas</button>
                     </div>`;
             }
             lucide.createIcons();
@@ -5272,7 +5255,7 @@
             const linhas = daCasa.map(({ e, ctx }) => {
                 let acao;
                 if (e.status === 'assinado') {
-                    acao = `<button onclick="registrarTurno('${e.id}', 'entrada')" class="press btn-primary sm shrink-0" style="height: 36px; padding: 0 14px;">Registrar entrada</button>`;
+                    acao = `<button onclick="registrarTurno('${e.id}', 'entrada')" class="press btn-secondary claro shrink-0">Registrar entrada</button>`;
                 } else if (e.status === 'em_turno') {
                     acao = `<button onclick="registrarTurno('${e.id}', 'saida')" class="press btn-secondary shrink-0">Registrar saída</button>`;
                 } else {
@@ -5382,18 +5365,18 @@
                             <div class="flex items-center gap-2 min-w-0">
                                 ${logoHtml(house, 'w-7 h-7')}
                                 <span class="t-sub font-semibold truncate">${nomeCasa(house)}</span>
-                                <span class="t-foot text-white/60 truncate">· ${house.especialidade}</span>
+                                <span class="t-foot c-1b truncate">· ${house.especialidade}</span>
                             </div>
                             <h3 class="t-title1">${nomeNoite(prog)}</h3>
-                            <p class="t-sub text-white/80 max-w-[90%]">${prog.descricao}</p>
+                            <p class="t-sub c-1b max-w-[90%]">${prog.descricao}</p>
                             ${prog.djs ? `
-                            <p class="flex items-center gap-1.5 t-foot text-white/70 min-w-0">
+                            <p class="flex items-center gap-1.5 t-foot c-1b min-w-0">
                                 <i data-lucide="music" class="w-3.5 h-3.5 shrink-0"></i>
                                 <span class="truncate">${titulo(prog.djs)}</span>
                             </p>` : ''}
                         </div>
                         <div class="flex items-center justify-between gap-3">
-                            <span class="t-foot text-white/80 flex items-center gap-2 min-w-0">${quando}</span>
+                            <span class="t-foot c-1b flex items-center gap-2 min-w-0">${quando}</span>
                             <button onclick="openHouseDetail('${house.id}', '${prog.id}')" class="press btn-primary sm shrink-0">Ver noite</button>
                         </div>
                     </div>
