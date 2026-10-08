@@ -51,7 +51,7 @@
            - Gutter de 16px (px-4) em tudo, inclusive dentro de cartão (p-4) e na
              legenda sobre imagem (left-4 right-4). Exceção: o onboarding usa 24px,
              porque é tela imersiva sem barra.
-           - Raios por papel: 28 sheet · 24 herói · 18 cartão e .group-list ·
+           - Raios por papel: 28 sheet · 24 cartão do onboarding · 18 cartão e .group-list ·
              14 caixa aninhada · 12 miniatura · full para pílulas, botões e avatares.
            - Cabeçalho de aba: linha de 36px (data ou voltar à esquerda, avatar ou
              ação à direita), h1.t-large e subtítulo t-sub c-2. Entre seções, 32px
@@ -258,18 +258,8 @@
         .msg-erro { font-size: 13px; line-height: 18px; color: var(--danger); }
 
         /* Alturas que encolhem em tela baixa; vh antes como fallback de dvh */
-        .hero-alt { height: min(400px, 52vh); height: min(400px, 52dvh); }
         .capa-alt { height: min(460px, 58vh); height: min(460px, 58dvh); }
         .rail-capa { aspect-ratio: 5 / 6; height: auto; }
-        /* Rodapé do herói: abaixo de 360 px o botão desce para a linha de baixo */
-        @media (max-width: 359px) {
-            .hero-rodape { flex-wrap: wrap; }
-            .hero-rodape > .btn-primary { flex-basis: 100%; }
-            /* Herói baixo: o logo sobe e o escurecimento começa antes, para o título não cair sobre a arte */
-            .hero-alt .midia-logo { transform: translateY(-28%); }
-            .hero-alt .midia-capa { object-position: 50% 100%; }
-            .hero-alt .scrim-hero { background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0.78) 46%, rgba(0,0,0,0.97) 100%); }
-        }
 
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -1834,27 +1824,21 @@
             const rail = document.getElementById('rail-abertas');
             const railScroll = rail ? rail.scrollLeft : 0;
 
+            // Sem cartão de destaque: a noite em que agir agora faz diferença abre o carrossel
             const destaque = escolherDestaque(agoraL.length ? agoraL : hojeL, ref);
-            const semDestaque = x => !destaque || x.st.prog.id !== destaque.st.prog.id;
-            let html = destaque ? heroHtml(destaque.house, destaque.st, ref) : '';
+            const comDestaqueNaFrente = lista => destaque
+                ? [destaque, ...lista.filter(x => x.st.prog.id !== destaque.st.prog.id)]
+                : lista;
+            const railHtml = lista =>
+                `<div id="rail-abertas" class="rail">${comDestaqueNaFrente(lista).map(x => cartaoRailHtml(x.house, x.st, ref)).join('')}</div>`;
+            let html = '';
 
             if (agoraL.length) {
-                const outras = agoraL.filter(semDestaque);
-                if (outras.length) {
-                    html += secaoHtml('Abertas agora',
-                        `<div id="rail-abertas" class="rail">${outras.map(x => cartaoRailHtml(x.house, x.st, ref)).join('')}</div>`,
-                        { semPadding: true, acao: linkAgenda('hoje', 'Ver agenda') });
-                }
+                html += secaoHtml('Abertas agora', railHtml(agoraL), { semPadding: true, acao: linkAgenda('hoje', 'Ver agenda') });
                 html += htmlValendoAgora(agoraL, ref);
-                const tarde = hojeL.filter(semDestaque);
-                if (tarde.length) html += secaoHtml('Mais tarde hoje', listaNoitesHtml(tarde, ref));
+                if (hojeL.length) html += secaoHtml('Mais tarde hoje', listaNoitesHtml(hojeL, ref));
             } else if (hojeL.length) {
-                const outras = hojeL.filter(semDestaque);
-                if (outras.length) {
-                    html += secaoHtml('Mais tarde hoje',
-                        `<div id="rail-abertas" class="rail">${outras.map(x => cartaoRailHtml(x.house, x.st, ref)).join('')}</div>`,
-                        { semPadding: true });
-                }
+                html += secaoHtml('Mais tarde hoje', railHtml(hojeL), { semPadding: true });
                 html += htmlPromosMaisTarde(hojeL, ref);
             }
 
@@ -1874,46 +1858,6 @@
 
         function linkAgenda(sel, texto) {
             return `<button onclick="abrirAgenda('${sel}')" class="press link-44 -my-3 t-sub c-accent shrink-0">${texto}</button>`;
-        }
-
-        function heroHtml(house, st, ref) {
-            const ent = infoEntrada(st.prog, st.occ, ref);
-            const aberta = st.estado === 'agora';
-            const tipo = garantiasDaNoite(house, st.prog)[0];
-            const generos = house.especialidade.split(',').slice(0, 2).map(s => s.trim()).join(', ');
-            const chipEsq = aberta
-                ? `<span class="glass chip-glass"><span class="dot pulse"></span>Rolando agora</span>`
-                : `<span class="glass chip-glass">${st.emMin <= 120 ? `Começa em ${fmtDuracao(st.emMin)}` : `Abre às ${fmtHora(st.inicio)}`}</span>`;
-            const chipDir = aberta ? `até ${fmtHora(st.fim)}` : `${fmtHora(st.inicio)} – ${fmtHora(st.fim)}`;
-
-            return `
-                <div class="px-4">
-                    <article class="relative hero-alt card rounded-[24px] overflow-hidden">
-                        ${midiaHtml(house, 'absolute inset-0')}
-                        <div class="absolute inset-0 scrim-hero"></div>
-                        <button onclick="openHouseDetail('${house.id}', '${st.prog.id}')" aria-label="Ver ${escHtml(nomeNoite(st.prog))} em ${escHtml(nomeCasa(house))}" class="press absolute inset-0 w-full"></button>
-                        <div class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none">
-                            ${chipEsq}
-                            <span class="glass chip-glass font-medium">${chipDir}</span>
-                        </div>
-                        <div class="absolute left-4 right-4 bottom-5 flex flex-col gap-3 pointer-events-none">
-                            <div class="flex flex-col gap-2">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    ${logoHtml(house, 'w-6 h-6')}
-                                    <span class="t-foot font-semibold c-1b truncate">${nomeCasa(house)} · ${generos}</span>
-                                </div>
-                                <h2 class="t-title1">${nomeNoite(st.prog)}</h2>
-                            </div>
-                            <div class="hero-rodape flex justify-between items-center gap-3">
-                                <div class="min-w-0 flex flex-col gap-0.5">
-                                    <span class="t-headline truncate ${ent.urgente ? 'c-accent' : ''}">${ent.principal}</span>
-                                    ${ent.detalheCurto ? `<span class="t-foot c-1b">${ent.detalheCurto}</span>` : ''}
-                                </div>
-                                <button onclick="openReservationModal('${st.prog.id}', '${house.id}', '${tipo}')" class="press btn-primary sm pointer-events-auto relative">${GARANTIAS[tipo].acao}</button>
-                            </div>
-                        </div>
-                    </article>
-                </div>`;
         }
 
         function cartaoRailHtml(house, st, ref) {
