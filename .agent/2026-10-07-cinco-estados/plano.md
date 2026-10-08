@@ -48,14 +48,14 @@ Ordem: T1 → T10 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T1
 
 ### Eixo 1: cinco estados
 
-- [ ] **T1. Primitivos de feedback** (base para as demais)
+- [x] **T1. Primitivos de feedback** (base para as demais) — commit `7372ca0`
   - CSS, junto dos outros componentes do bloco "SISTEMA VISUAL": `.spinner` (anel de 18px, `border: 2px solid`, cor `currentColor` com topo transparente, `animation: spin`), `.spinner.lg` (36px, substitui o anel inline do modal da vaga, linha 5120); `.campo-erro` (borda `--danger` em `.row` ou `.otp-caixa`); `.msg-erro` (`t-foot c-danger`, `role="alert"`). Sob `prefers-reduced-motion`, o spinner vira um anel estático; por isso todo estado em voo leva texto junto.
   - JS: `emVoo(botao, texto)`: desabilita o botão, guarda o `innerHTML`, troca por `<span class="spinner"></span>texto`, devolve uma função que restaura. `aguardar(ms)` retorna Promise. Toast ganha tipos: `mostrarToast(msg, { tipo: 'sucesso' | 'erro' | 'neutro', acao: { rotulo, fn } })`; `showSuccessToast` continua existindo como atalho para `tipo: 'sucesso'`. Ícones: `circle-check` verde, `circle-alert` em `--danger`, `info` em `--label-2`. Toast com ação dura 5 s, sem ação 2 s.
   - JS: `vazioHtml({ icone, titulo, texto, acaoHtml })` reproduzindo exatamente o bloco de 3651–3656, e `vazioCompactoHtml(texto)` reproduzindo 4592–4594. Trocar as ocorrências existentes (3651–3656, 3671–3675, 4592–4594, 4959, 5213–5218, 2177–2180) pelos helpers sem mudar o visual.
   - Usos imediatos: "Áudio mutado" (4344) e "Modo visitante" (4055) passam a `tipo: 'neutro'`.
   - Verificação: capturas `t1-toast-erro`, `t1-toast-neutro` (via `js`), `ref-ingressos-390` igual ao antes.
 
-- [ ] **T2. Painel de reserva: erro inline e envio em voo**
+- [x] **T2. Painel de reserva: erro inline e envio em voo** — commit `22b5501`. Bloqueio do fechar por flag `enviandoReserva`; texto do voo do cancelamento vem de `GARANTIAS.desfazendo`.
   - `<form>` da linha 491 ganha `novalidate`; `required` nativo deixa de ser o mecanismo.
   - Validação própria em `handleReservationSubmit`: nome com 2+ caracteres; WhatsApp com 11 dígitos, usando `mascararTelefone` (3850) no `oninput`, como o login. Erro: `.campo-erro` na `.row` do campo, `.msg-erro` logo abaixo com texto curto ("Diga seu nome para a lista." / "Celular com DDD, 11 números."), `aria-invalid="true"`, foco no primeiro campo inválido. Erro some ao digitar.
   - Envio: `emVoo(botão, 'Confirmando…')`, `aguardar(800)`, então o fluxo atual (fechar, toast, ir para Ingressos). Backdrop e botão de fechar ficam inertes durante o voo.
@@ -116,7 +116,7 @@ Ordem: T1 → T10 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T1
 
 ### Eixo 3: ritmo visual
 
-- [ ] **T10. Tokens e classes: zero mudança visual, muito menos dispersão** (roda logo depois da T1, para as tarefas seguintes usarem as classes novas)
+- [x] **T10. Tokens e classes: zero mudança visual, muito menos dispersão** — commits `37c4743` e `fix` do chevron (`--label-4`). Decisões registradas: `.btn-secondary.claro` para os botões brancos de 36px; rótulos da barra de etapas das escalas ficaram em 11px porque `t-cap` quebrava linha; `tailwind.config` removido inteiro. (roda logo depois da T1, para as tarefas seguintes usarem as classes novas)
   - CSS: `.card { background: var(--fill-1); border-radius: 18px; }` substitui `bg-[#1c1c1e] rounded-[18px]` e variações de cartão (23 usos de `bg-[#1c1c1e]`); `.chevron { color: var(--label-3); }` substitui `text-[#636366]` ×8; `--label-1b: #ebebf5` com `.c-1b` substitui `text-[#ebebf5]`, `text-[#aeaeb2]` e `text-white/80|70|60` em texto sobre imagem. `--label-3` continua `#8e8e93` (mudar o contraste fica fora desta rodada).
   - Chips semânticos: `.chip-live`, `.chip-accent`, `.chip-info` (`--info: #64d2ff`) com fundo em alfa 0.16, substituindo os `style="background: rgba(…)"` de 3574, 3576, 4146, 4971, 5152. Em 4768, `var(--accent)`/`var(--danger)` no lugar dos hex (corrige a troca de identidade no leitor de QR).
   - Botões: `.btn-primary { border-radius: 9999px }`, `.btn-primary.lg { height: 54px }` para as folhas; remover os `style="height…; border-radius…"` de 527, 5121, 5144, 5157 e os `style="height: 36px; padding…"` de 4602 e 5225 (viram `.btn-secondary`).
