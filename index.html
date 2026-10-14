@@ -206,6 +206,14 @@
         .pt-safe { padding-top: calc(env(safe-area-inset-top) + 14px); }
         /* Mapa */
         .mapa-moldura { isolation: isolate; } /* panes do Leaflet (z 400+) não passam por cima da barra inferior */
+        #agenda-dias { padding-top: 16px; }
+        /* Agenda no modo mapa: o mapa ocupa tudo entre o título e a barra de abas, e os dias flutuam sobre ele */
+        #tab-agenda-view.modo-mapa:not(.hidden) { position: fixed; top: 0; left: 0; right: 0; bottom: calc(49px + env(safe-area-inset-bottom)); max-width: 28rem; margin: 0 auto; display: flex; flex-direction: column; }
+        body:has(#tab-agenda-view.modo-mapa:not(.hidden)) { overflow: hidden; }
+        .modo-mapa #agenda-corpo { flex: 1; margin-top: 12px; }
+        .modo-mapa #agenda-mapa { position: absolute; inset: 0; }
+        .modo-mapa #agenda-dias { position: absolute; top: 0; left: 0; right: 0; z-index: 1001; padding-top: 12px; padding-bottom: 8px; gap: 8px; }
+        #mapa-rodape:empty, #mapa-cartao:not(.hidden) + #mapa-rodape { display: none; }
         .leaflet-container { background: #1a1d24; font-family: var(--font-body); }
         .leaflet-control-attribution { background: rgba(0,0,0,0.55) !important; color: #8e8e93 !important; font-size: 9px; }
         .leaflet-control-attribution a { color: #aeaeb2 !important; }
@@ -381,31 +389,34 @@
 
             <!-- AGENDA: todas as casas de um dia, com horário, entrada e promoções -->
             <section id="tab-agenda-view" class="hidden view-in">
-                <div class="pt-safe px-4 space-y-4">
+                <div class="pt-safe px-4 space-y-1">
                     <div class="h-9" aria-hidden="true"></div>
-                    <div class="space-y-1">
+                    <div class="flex items-center justify-between gap-3">
                         <h1 class="t-large">Agenda</h1>
-                        <p id="agenda-resumo" class="t-sub c-2"></p>
+                        <div class="segmented w-[136px] shrink-0" role="tablist" aria-label="Ver a agenda como">
+                            <button type="button" role="tab" id="seg-agenda-lista" onclick="setAgendaModo('lista')">Lista</button>
+                            <button type="button" role="tab" id="seg-agenda-mapa" onclick="setAgendaModo('mapa')">Mapa</button>
+                        </div>
                     </div>
-                    <div class="segmented" role="tablist" aria-label="Ver a agenda como">
-                        <button type="button" role="tab" id="seg-agenda-lista" onclick="setAgendaModo('lista')">Lista</button>
-                        <button type="button" role="tab" id="seg-agenda-mapa" onclick="setAgendaModo('mapa')">Mapa</button>
+                    <p id="agenda-resumo" class="t-sub c-2"></p>
+                </div>
+                <!-- No modo mapa, os dias flutuam sobre o mapa (ver .modo-mapa no CSS) -->
+                <div id="agenda-corpo" class="relative">
+                    <div id="agenda-dias" class="rail" role="group" aria-label="Escolher o dia"></div>
+                    <div id="agenda-lista" class="px-4 pt-5 space-y-8">
+                        <!-- Gerado via renderAgenda() -->
                     </div>
-                </div>
-                <div id="agenda-dias" class="rail pt-4" role="group" aria-label="Escolher o dia"></div>
-                <div id="agenda-lista" class="px-4 pt-5 space-y-8">
-                    <!-- Gerado via renderAgenda() -->
-                </div>
-                <div id="agenda-mapa" class="hidden px-4 pt-4">
-                    <div class="mapa-moldura relative card overflow-hidden" style="height: max(380px, calc(100dvh - 376px));">
+                    <div id="agenda-mapa" class="mapa-moldura hidden">
                         <div id="mapa-agenda" class="absolute inset-0"></div>
                         <button type="button" onclick="centralizarMapaAgenda()" aria-label="Mostrar todas as casas e a minha localização"
-                                class="press glass absolute top-3 right-3 z-[1000] w-10 h-10 rounded-full flex items-center justify-center">
+                                class="press glass absolute top-[60px] right-3 z-[1000] w-10 h-10 rounded-full flex items-center justify-center shadow-lg">
                             <i data-lucide="locate-fixed" class="w-5 h-5"></i>
                         </button>
-                        <div id="mapa-cartao" class="absolute left-3 right-3 bottom-3 z-[1000] hidden"></div>
+                        <div class="absolute left-3 right-3 bottom-6 z-[1000] pointer-events-none">
+                            <div id="mapa-cartao" class="pointer-events-auto hidden"></div>
+                            <p id="mapa-rodape" class="glass rounded-[14px] px-3 py-2 t-foot c-2 space-y-1 pointer-events-auto"></p>
+                        </div>
                     </div>
-                    <p id="mapa-rodape" class="t-foot c-3 pt-3 px-1 space-y-1"></p>
                 </div>
             </section>
 
@@ -2211,17 +2222,28 @@
             const opcoes = opcoesAgenda(ref);
             if (!opcoes.includes(agendaDia)) agendaDia = 'hoje';
 
+            const noMapa = agendaModo === 'mapa';
+            document.getElementById('tab-agenda-view').classList.toggle('modo-mapa', noMapa);
+
+            // Na lista, cada dia diz quantas casas abrem; sobre o mapa, só o rótulo
+            // numa pílula de vidro, como os atalhos do Google Maps (os pinos já contam).
             const rail = document.getElementById('agenda-dias');
             const railScroll = rail.scrollLeft;
             rail.innerHTML = opcoes.map(sel => {
                 const dias = diasDaSelecao(sel, ref);
                 const casas = new Set(dias.flatMap(d => noitesDoDia(d, ref).map(i => i.house.id))).size;
                 const ativo = sel === agendaDia;
+                const qtd = casas ? `${casas} ${casas === 1 ? 'casa' : 'casas'}` : 'nada';
+                if (noMapa) return `
+                    <button onclick="selecionarDiaAgenda('${sel}')" aria-pressed="${ativo}" aria-label="${rotuloChipAgenda(sel, ref)}, ${qtd}"
+                            class="press shrink-0 rounded-full h-9 px-4 flex items-center shadow-lg t-sub font-semibold whitespace-nowrap ${ativo ? 'bg-white text-black' : `glass ${casas ? 'text-white' : 'c-3'}`}">
+                        ${rotuloChipAgenda(sel, ref)}
+                    </button>`;
                 return `
                     <button onclick="selecionarDiaAgenda('${sel}')" aria-pressed="${ativo}"
                             class="press shrink-0 rounded-full px-4 py-2 min-w-[76px] flex flex-col items-center ${ativo ? 'bg-white text-black' : 'bg-[var(--fill-1)] text-white'}">
                         <span class="t-sub font-semibold whitespace-nowrap">${rotuloChipAgenda(sel, ref)}</span>
-                        <span class="t-foot ${ativo ? 'text-black/60' : 'c-2'}">${casas ? `${casas} ${casas === 1 ? 'casa' : 'casas'}` : 'nada'}</span>
+                        <span class="t-foot ${ativo ? 'text-black/60' : 'c-2'}">${qtd}</span>
                     </button>`;
             }).join('');
             rail.scrollLeft = railScroll;
@@ -2234,7 +2256,6 @@
                 : `${DIAS_TITULO[primeiro.getDay()]} ${primeiro.getDate()} a ${DIAS_TITULO[ultimo.getDay()].toLowerCase()} ${ultimo.getDate()} de ${MESES_LONGO[ultimo.getMonth()]}`;
             document.getElementById('agenda-resumo').innerText = resumo;
 
-            const noMapa = agendaModo === 'mapa';
             document.getElementById('seg-agenda-lista').setAttribute('aria-selected', String(!noMapa));
             document.getElementById('seg-agenda-mapa').setAttribute('aria-selected', String(noMapa));
             view.classList.toggle('hidden', noMapa);
@@ -2400,7 +2421,7 @@
         }
 
         function textoOrigem() {
-            if (origemTipo === 'real') return 'Distância a partir de onde você está.';
+            // Com a localização real não há aviso: a distância a partir de você é o óbvio.
             if (origemTipo === 'pedindo') return 'Buscando sua localização…';
             if (origemTipo === 'demo') {
                 const porque = origemMotivo === 'longe' ? 'Você está fora de Goiânia' : 'Sem acesso à sua localização';
@@ -2930,7 +2951,9 @@
             if (o) pontos.push([o.lat, o.lng]);
             if (!pontos.length) return mapaAgenda.setView([CENTRO_GOIANIA.lat, CENTRO_GOIANIA.lng], 13);
             mapaAgenda.invalidateSize();
-            mapaAgenda.fitBounds(pontos, { padding: [56, 56], maxZoom: 15 });
+            // Os dias flutuam em cima e o aviso de localização embaixo: nenhum pino fica atrás deles.
+            const aviso = document.getElementById('mapa-rodape').offsetHeight;
+            mapaAgenda.fitBounds(pontos, { paddingTopLeft: [40, 80], paddingBottomRight: [40, aviso + 56], maxZoom: 15 });
         }
 
         function desenharRodapeMapa() {
