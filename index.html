@@ -656,6 +656,17 @@
                             </button>
                         </div>
                     </div>
+
+                    <div class="space-y-2">
+                        <p class="t-cap c-2 px-4">App</p>
+                        <div class="group-list on-fill">
+                            <button type="button" id="btn-versao-nova" onclick="buscarVersaoNova()" class="press row justify-between">
+                                <span class="t-body c-accent">Buscar versão nova</span>
+                                <i data-lucide="refresh-cw" class="w-4 h-4 c-2 shrink-0"></i>
+                            </button>
+                        </div>
+                        <p class="t-foot c-2 px-4">Recarrega o app ignorando o que ficou guardado no celular. Reservas e login continuam.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1572,6 +1583,11 @@
         // Os nomes antigos de aba (discover, promos, reservas) continuam valendo.
         function abrirDestinoDaUrl() {
             const p = new URLSearchParams(location.search);
+            if (p.has('v')) {   // veio de "Buscar versão nova": tira o carimbo do endereço
+                const limpa = new URL(location.href);
+                limpa.searchParams.delete('v');
+                history.replaceState(history.state, '', limpa);
+            }
             const casa = p.get('casa');
             const aba = p.get('aba');
             if (casa && housesData.some(h => h.id === casa)) {
@@ -3975,6 +3991,22 @@
         function closeMenu() {
             document.getElementById('menu-sheet').classList.add('hidden');
             destravarFundo('menu');
+        }
+
+        // O celular (Android ou iOS, no navegador ou na tela de início) às vezes
+        // segura a versão antiga. Limpa o que der e recarrega por um endereço
+        // que nenhum cache viu; o localStorage (reservas, sessão) fica.
+        async function buscarVersaoNova() {
+            const botao = document.getElementById('btn-versao-nova');
+            botao.disabled = true;
+            botao.querySelector('span').innerText = 'Buscando…';
+            try {
+                if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k)));
+                if (navigator.serviceWorker) await Promise.all((await navigator.serviceWorker.getRegistrations()).map(r => r.unregister()));
+            } catch (e) { /* sem acesso a cache ou service worker: o endereço novo já basta */ }
+            const url = new URL(location.href);
+            url.searchParams.set('v', Date.now());
+            location.replace(url);
         }
 
         function renderMenu() {
