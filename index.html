@@ -211,8 +211,8 @@
         #tab-agenda-view.modo-mapa:not(.hidden) { position: fixed; top: 0; left: 0; right: 0; bottom: calc(49px + env(safe-area-inset-bottom)); max-width: 28rem; margin: 0 auto; display: flex; flex-direction: column; }
         body:has(#tab-agenda-view.modo-mapa:not(.hidden)) { overflow: hidden; }
         .modo-mapa #agenda-corpo { flex: 1; margin-top: 12px; }
-        .modo-mapa #agenda-mapa { position: absolute; inset: 0; }
-        .modo-mapa #agenda-dias { position: absolute; top: 0; left: 0; right: 0; z-index: 1001; padding-top: 12px; padding-bottom: 8px; gap: 8px; }
+        .modo-mapa #agenda-mapa { position: absolute; inset: 0 16px 12px; border-radius: 18px; overflow: hidden; border: 0.5px solid rgba(255, 255, 255, 0.14); }
+        .modo-mapa #agenda-dias { position: absolute; top: 0; left: 16px; right: 16px; z-index: 1001; padding: 12px 12px 8px; scroll-padding: 0 12px; gap: 8px; border-radius: 18px 18px 0 0; }
         #mapa-rodape:empty, #mapa-cartao:not(.hidden) + #mapa-rodape { display: none; }
         .leaflet-container { background: #1a1d24; font-family: var(--font-body); }
         .leaflet-control-attribution { background: rgba(0,0,0,0.55) !important; color: #8e8e93 !important; font-size: 9px; }
